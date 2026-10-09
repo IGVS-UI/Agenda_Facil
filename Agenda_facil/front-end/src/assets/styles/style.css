@@ -1,13 +1,11 @@
-*{
-    padding: 0;
-    margin: 0;
-    box-sizing: border-box;
-}
-/*cores do site*/
+/* O Bootstrap (reboot) já define box-sizing e zera as margens de body e títulos. */
+
+/* Cores do site */
 :root {
     --azul-principal: #1677F2;
     --azul-escuro: #173B63;
     --azul-claro: #EAF4FF;
+    --azul-hover: #0a4296;
 
     --branco: #FFFFFF;
     --cinza-claro: #F5F8FC;
@@ -17,72 +15,82 @@
     --laranja: #FF9F43;
     --vermelho: #E55353;
 }
-/*Estilização nav-bar encima do bootstrap*/
-.icone{
-  width: 50px;
-  height: auto;
+
+/* Foco visível para navegação por teclado */
+a:focus-visible,
+button:focus-visible {
+    outline: 3px solid var(--azul-principal);
+    outline-offset: 2px;
+}
+
+/* Navbar (por cima do Bootstrap) */
+a.navbar-brand {
+    color: var(--azul-escuro);
+    font-size: 1.5rem;
+    font-weight: 500;
+}
+
+.marca-destaque {
+    color: var(--azul-principal);
 }
 
 .navbar-nav .nav-link {
-  color: var(--azul-escuro);
+    position: relative;
+    padding-bottom: 0.75rem;
+    color: var(--azul-escuro);
 }
 
+/* Linha animada: nasce no centro e cresce até as bordas */
+.navbar-nav .nav-link::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background-color: var(--azul-principal);
+    transform: scaleX(0);
+    transform-origin: center;
+    transition: transform 0.3s ease-in-out;
+}
+
+.navbar-nav .nav-link:hover::after,
+.navbar-nav .nav-link:focus-visible::after,
+.navbar-nav .nav-link.active::after {
+    transform: scaleX(1);
+}
+
+.navbar-nav .nav-link.active,
 .navbar-nav .nav-link:hover,
-.navbar-nav .nav-link:focus,
+.navbar-nav .nav-link:focus {
+    color: var(--azul-escuro);
+}
+
 .navbar-nav .nav-link.active {
-  color: var(--azul-escuro);
-}
-
-a.navbar-brand{
-  color: var(--azul-escuro);
-  font-size: 1.5rem;
-  font-weight: 500;
-}
-/* remove a borda dura padrão do bootstrap 5 */
-.nav-underline .nav-link {
-  border-bottom: none !important;
-  position: relative;
-  padding-bottom: 0.75rem; /* aumenta o espaço vertical entre o texto e a linha */
-}
-
-/* cria a nova linha personalizada */
-.nav-underline .nav-link::after {
-  content: "";
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  height: 2px; /* espessura da linha */
-  background-color: var(--bs-nav-underline-border-color, #0d6efd); /* usa a cor do bootstrap ou azul */
-  
-  /* o segredo da animação suave: começa encolhida no centro */
-  transform: scaleX(0);
-  transition: transform 0.3s ease-in-out;
-  transform-origin: center; 
-}
-
-/* ativa a animação no link ativo e ao passar o mouse */
-.nav-underline .nav-link.active::after,
-.nav-underline .nav-link:hover::after {
-  transform: scaleX(1);
-}
-
-/* garante que a cor do link ativo mude normalmente */
-.nav-underline .nav-link.active {
-  font-weight: 600;
-}
-
-.btn-primary {
-  border-radius: 10px;
-  padding: 5px 20px;
-  transition: all 0.3s ease-in-out;
-  margin-right: 50px;
-  & a{
     font-weight: 600;
-  }
 }
+
+/* Botão principal */
+.btn-primary {
+    border-radius: 10px;
+    padding: 5px 20px;
+    font-weight: 600;
+    transition: transform 0.3s ease-in-out, background-color 0.3s ease-in-out;
+}
+
 .btn-primary:hover {
-  transform: translateY(-2px);
-  background-color: #0a4296;
-  border-color: #0a58ca;
+    transform: translateY(-2px);
+    background-color: var(--azul-hover);
+    border-color: var(--azul-hover);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .navbar-nav .nav-link::after,
+    .btn-primary {
+        transition: none;
+    }
+
+    .btn-primary:hover {
+        transform: none;
+    }
 }
