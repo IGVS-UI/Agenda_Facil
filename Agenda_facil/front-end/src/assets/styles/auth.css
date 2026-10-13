@@ -1,0 +1,207 @@
+/* Login e cadastro */
+.pa-fundo {
+    display: grid;
+    place-items: center;
+    min-height: calc(100vh - 72px);
+    padding: 2rem 1rem;
+    background: linear-gradient(135deg, var(--azul-claro), #F5FAFF);
+    color: var(--azul-escuro);
+}
+
+.pa-cartao {
+    width: 100%;
+    max-width: 440px;
+    padding: 2rem;
+    background: var(--branco);
+    border-top: 5px solid var(--azul-principal);
+    border-radius: 8px;
+    box-shadow: 0 8px 28px rgba(23, 59, 99, 0.12);
+}
+
+.pa-cartao h1 {
+    font-size: 1.75rem;
+    font-weight: 700;
+}
+
+.pa-logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1.25rem;
+    color: var(--azul-escuro);
+    font-size: 1.3rem;
+    font-weight: 500;
+    text-decoration: none;
+}
+
+.pa-sub {
+    color: var(--cinza-texto);
+}
+
+.pa-campo {
+    margin-bottom: 1rem;
+}
+
+.pa-erro {
+    margin-top: 0.25rem;
+    color: var(--vermelho);
+    font-size: 0.875rem;
+}
+
+.pa-linha {
+    margin: -0.25rem 0 1rem;
+    text-align: right;
+    font-size: 0.9rem;
+}
+
+.pa-rodape {
+    margin: 1.25rem 0 0;
+    text-align: center;
+    color: var(--cinza-texto);
+}
+
+.pa-dica {
+    margin: 1rem 0 0;
+    padding-top: 0.75rem;
+    border-top: 1px dashed var(--azul-claro);
+    text-align: center;
+    color: var(--cinza-texto);
+    font-size: 0.8rem;
+}
+
+.pa-status {
+    margin-top: 1rem;
+    font-size: 0.95rem;
+}
+
+.pa-status-erro,
+.pa-status-ok {
+    padding: 0.75rem 1rem;
+    border-radius: 6px;
+}
+
+.pa-status-erro {
+    background: #FDECEC;
+    border-left: 4px solid var(--vermelho);
+    color: #9B2C2C;
+}
+
+.pa-status-ok {
+    background: #E3F7EE;
+    border-left: 4px solid var(--verde);
+    color: #17694A;
+}
+
+/* Perfil: cliente ou profissional */
+.pa-perfil {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    margin: 0 0 1.25rem;
+    padding: 0;
+    border: 0;
+}
+
+/* Botão Google */
+.pa-ou {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 1.25rem 0;
+    color: var(--cinza-texto);
+    font-size: 0.85rem;
+}
+
+.pa-ou::before,
+.pa-ou::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: #D5E2F1;
+}
+
+.pa-google {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    width: 100%;
+    padding: 0.6rem 1rem;
+    background: var(--branco);
+    border: 1px solid #C7D3E0;
+    color: #3C4043;
+    font-weight: 600;
+}
+
+.pa-google:hover,
+.pa-google:focus-visible {
+    background: #F6F9FE;
+    border-color: var(--azul-principal);
+    color: #3C4043;
+}
+
+.pa-google:disabled {
+    opacity: 0.7;
+}
+
+/* Dados do profissional (só no cadastro) */
+.pa-so-prof {
+    margin: 0 0 1rem;
+    padding: 1rem 1rem 0.25rem;
+    background: var(--cinza-claro);
+    border: 1px solid var(--azul-claro);
+    border-radius: 6px;
+}
+
+.pa-so-prof legend {
+    float: none;
+    width: auto;
+    padding: 0 0.5rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+[data-tipo="cliente"] .pa-so-prof {
+    display: none;
+}
+
+.pa-grade-end {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 0 1rem;
+}
+
+.pa-grade-end > .pa-campo {
+    grid-column: span 3;
+}
+
+.pa-grade-end > .pa-grade-largo {
+    grid-column: 1 / -1;
+}
+
+.pa-grade-end > .pa-campo:nth-child(6) {
+    grid-column: span 4;
+}
+
+.pa-grade-end > .pa-campo:nth-child(7) {
+    grid-column: span 2;
+}
+
+@media (max-width: 575.98px) {
+    .pa-cartao {
+        padding: 1.5rem;
+    }
+
+    .pa-grade-end {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .pa-grade-end > .pa-campo:nth-child(n) {
+        grid-column: span 1;
+    }
+
+    .pa-grade-end > .pa-grade-largo,
+    .pa-grade-end > .pa-campo:nth-child(5) {
+        grid-column: 1 / -1;
+    }
+}

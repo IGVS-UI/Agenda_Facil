@@ -1,76 +1,231 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Agenda_Fácil</title>
-    <link rel="stylesheet" href="	https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css">
+    <title>Agenda Fácil</title>
+    <meta name="description" content="Encontre profissionais, veja os horários livres e agende seus serviços em poucos cliques.">
+    <link rel="icon" type="image/png" href="../img/logo.png">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="../styles/style.css">
-    
 </head>
 <body>
- <header>
-<nav class="navbar navbar-expand-lg bg-body-tertiary">
-  <div class="container-fluid">
-<a class="navbar-brand" href="index.html">Agenda <span class="text-primary">Fácil</span></a>
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-      <span class="navbar-toggler-icon"></span>
-    </button>
-    <ul class="nav nav-underline gap-4">
-    <li class="nav-item">
-        <a class="nav-link active" aria-current="page" href="index.html">Inicío</a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link" href="serviços.html">Serviços</a>   
-    </li>
-    <li class="nav-item">
-        <a class="nav-link" href="meus-agendamentos.html">Meus Agendamentos</a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link" aria-disabled="true">Área do Profissional</a>
-    </li>
-    </ul>
+<a class="link-pular" href="#conteudo">Pular para o conteúdo</a>
 
- <div class="d-grid gap-2 d-md-block">
-  <button class="btn btn-primary" type="button">Entrar</button>
-</div>
- 
-</div>
-</nav>
- </header>   
+<header>
+    <nav class="navbar navbar-expand-lg" aria-label="Navegação principal">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center gap-2" href="index.html">
+                <img src="../img/logo.png" alt="" width="40" height="40">
+                <span>Agenda <span class="marca-destaque">Fácil</span></span>
+            </a>
 
- <!-- <main>
-    <section class="t_right">
-        <p>Sua Rotina Mais Organizada</p>
-        <h1>Agende Seus Serviços com praticidade e <strong class="texto_destacado">segurança</strong></h1>
-        <p class="paragrafo_pequeno">
-            No Agenda Fácil você encontra profissionais,escolhe o serviço ideal,verifica a disponibilidade e agende em poucos cliques.
-        </p>
-        <button>Buscar Serviços</button>
-        <button>Cadastrar Profissional<button>                                                                               
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
+                    data-bs-target="#menuPrincipal" aria-controls="menuPrincipal"
+                    aria-expanded="false" aria-label="Abrir menu de navegação">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse" id="menuPrincipal">
+                <ul class="navbar-nav mx-lg-auto gap-lg-4">
+                    <li class="nav-item">
+                        <a class="nav-link active" aria-current="page" href="index.html">Início</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="servicos_usuario.html">Serviços</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="meus_agendamentos_usuario.html">Meus agendamentos</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="agendamentos_profissional.html">Área do profissional</a>
+                    </li>
+                </ul>
+
+                <a class="btn btn-primary mt-3 mt-lg-0" href="autentificação/login.html">Entrar</a>
+            </div>
+        </div>
+    </nav>
+</header>
+
+<main id="conteudo">
+    <!-- Chamada principal -->
+    <section class="home-hero" aria-labelledby="titulo-hero">
+        <div class="container home-hero-grade">
+            <div class="home-hero-texto">
+                <p class="sobretitulo">Sua rotina mais organizada</p>
+                <h1 id="titulo-hero">Agende serviços com praticidade e <span class="marca-destaque">segurança.</span></h1>
+                <p class="home-hero-sub">
+                    No Agenda Fácil você encontra profissionais, escolhe o serviço ideal, verifica a disponibilidade e agenda em poucos cliques.
+                </p>
+                <div class="d-flex flex-wrap gap-3">
+                    <a class="btn btn-primary btn-lg" href="servicos_usuario.html">Buscar serviços</a>
+                    <a class="btn btn-outline-primary btn-lg" href="autentificação/cadastro.html?tipo=profissional">Cadastrar profissional</a>
+                </div>
+            </div>
+
+            <div class="home-hero-arte">
+                <!-- Ilustração decorativa: calendário, relógio e planta -->
+                <svg viewBox="0 0 520 400" role="img" aria-label="Ilustração de um calendário com um agendamento confirmado e um relógio">
+                    <ellipse cx="270" cy="360" rx="210" ry="22" fill="#CFE3FB" opacity=".7"/>
+                    <!-- planta -->
+                    <path d="M62 330c-28-40-24-96 14-132 10 46 8 92-14 132z" fill="#2DBE7F"/>
+                    <path d="M62 330c-6-52 20-104 66-124 4 48-14 96-66 124z" fill="#35CC8D"/>
+                    <path d="M62 330c-18-34-8-78 22-104" fill="none" stroke="#1E9C65" stroke-width="3" stroke-linecap="round"/>
+                    <path d="M30 330h72l-9 38H39z" fill="#fff" stroke="#DCE9F8" stroke-width="2"/>
+                    <!-- calendário -->
+                    <rect x="130" y="70" width="290" height="260" rx="22" fill="#fff" stroke="#BFD9F8" stroke-width="3"/>
+                    <path d="M130 92a22 22 0 0 1 22-22h246a22 22 0 0 1 22 22v36H130z" fill="#1677F2"/>
+                    <rect x="195" y="44" width="16" height="52" rx="8" fill="#0A4296"/>
+                    <rect x="338" y="44" width="16" height="52" rx="8" fill="#0A4296"/>
+                    <g fill="#E3EFFD">
+                        <rect x="154" y="152" width="46" height="38" rx="8"/><rect x="212" y="152" width="46" height="38" rx="8"/>
+                        <rect x="270" y="152" width="46" height="38" rx="8"/><rect x="328" y="152" width="46" height="38" rx="8"/>
+                        <rect x="154" y="202" width="46" height="38" rx="8"/><rect x="270" y="202" width="46" height="38" rx="8"/>
+                        <rect x="328" y="202" width="46" height="38" rx="8"/><rect x="154" y="252" width="46" height="38" rx="8"/>
+                        <rect x="212" y="252" width="46" height="38" rx="8"/><rect x="270" y="252" width="46" height="38" rx="8"/>
+                    </g>
+                    <rect x="212" y="202" width="46" height="38" rx="8" fill="#CFE3FB"/>
+                    <circle cx="235" cy="221" r="22" fill="#2DBE7F"/>
+                    <path d="M224 221l8 8 14-16" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+                    <!-- relógio -->
+                    <circle cx="410" cy="190" r="58" fill="#fff" stroke="#1677F2" stroke-width="9"/>
+                    <path d="M410 150v42l24 18" fill="none" stroke="#173B63" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+                    <!-- brilhos -->
+                    <path d="M470 60l16 22M488 96l24-10" stroke="#1677F2" stroke-width="6" stroke-linecap="round"/>
+                </svg>
+
+                <ul class="home-hero-selos">
+                    <li><i class="bi bi-check-circle-fill" aria-hidden="true"></i> Rápido</li>
+                    <li><i class="bi bi-check-circle-fill" aria-hidden="true"></i> Seguro</li>
+                    <li><i class="bi bi-check-circle-fill" aria-hidden="true"></i> Sem complicação</li>
+                </ul>
+            </div>
+        </div>
     </section>
- </main>
 
- <aside class="como_funciona">
-    <h1 class="titulo">Como Funciona</h1>
-    <p>em apenas alguns passos,você já pode agendar o seu serviço</p>
-    <articule class="serviço">
-        <img src="" alt="lupa">
-        <h1>Encontre o Serviço</h1>
-        <p>Pesquise pelo serviço que Você prescisa</p>
-    </articule>
-    <articule class="profissional">
-        <img src="" alt="Profissional">
-        <h1>Escolha o profisional</h1>
-        <p>Veja avaliações,especialidades e selecione o profissional ideal</p>
-    </articule>
-    <articule class="disponibilidade"></articule>
-    <articule class="agendamento"></articule>
-    <articule></articule>
-    
+    <!-- Como funciona -->
+    <section class="home-secao" aria-labelledby="titulo-como">
+        <div class="container">
+            <h2 class="titulo-centro" id="titulo-como">Como funciona</h2>
+            <p class="subtitulo-centro">Em apenas alguns passos, você já pode agendar o seu serviço.</p>
+            <ol class="passos">
+                <li>
+                    <span class="icone-circulo" aria-hidden="true"><i class="bi bi-search"></i></span>
+                    <strong>1. Encontre o serviço</strong>
+                    <span>Pesquise pelo serviço que você precisa.</span>
+                </li>
+                <li>
+                    <span class="icone-circulo" aria-hidden="true"><i class="bi bi-person"></i></span>
+                    <strong>2. Escolha o profissional</strong>
+                    <span>Veja avaliações, especialidades e selecione o profissional ideal.</span>
+                </li>
+                <li>
+                    <span class="icone-circulo" aria-hidden="true"><i class="bi bi-calendar3"></i></span>
+                    <strong>3. Verifique a disponibilidade</strong>
+                    <span>Escolha o melhor horário para você.</span>
+                </li>
+                <li>
+                    <span class="icone-circulo" aria-hidden="true"><i class="bi bi-check2-circle"></i></span>
+                    <strong>4. Confirme o agendamento</strong>
+                    <span>Pronto! Seu serviço está agendado.</span>
+                </li>
+            </ol>
+        </div>
+    </section>
 
- </aside> -->
+    <!-- Serviços populares (vem do apiService) -->
+    <section class="home-secao home-secao-clara" aria-labelledby="titulo-populares">
+        <div class="container">
+            <div class="home-secao-topo">
+                <div>
+                    <h2 id="titulo-populares">Serviços populares</h2>
+                    <p class="subtitulo">Os serviços mais buscados na nossa plataforma.</p>
+                </div>
+                <a class="btn btn-outline-primary" href="servicos_usuario.html">Ver todos <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+            </div>
+            <ul class="cards-servicos" id="listaPopulares" aria-live="polite">
+                <li class="cards-servicos-vazio">Carregando…</li>
+            </ul>
+        </div>
+    </section>
 
-</body>
+    <!-- Benefícios -->
+    <section class="home-secao" aria-labelledby="titulo-beneficios">
+        <div class="container">
+            <h2 class="titulo-centro" id="titulo-beneficios">Benefícios</h2>
+            <p class="subtitulo-centro">Por que escolher Agenda Fácil?</p>
+            <ul class="beneficios">
+                <li>
+                    <span class="icone-circulo icone-azul" aria-hidden="true"><i class="bi bi-lightning-charge"></i></span>
+                    <strong>Praticidade</strong>
+                    <span>Agende em poucos cliques, de onde estiver.</span>
+                </li>
+                <li>
+                    <span class="icone-circulo icone-verde" aria-hidden="true"><i class="bi bi-shield-check"></i></span>
+                    <strong>Segurança</strong>
+                    <span>Seus dados e agendamentos protegidos.</span>
+                </li>
+                <li>
+                    <span class="icone-circulo icone-roxo" aria-hidden="true"><i class="bi bi-star"></i></span>
+                    <strong>Profissionais qualificados</strong>
+                    <span>Trabalhamos com especialistas da sua região.</span>
+                </li>
+                <li>
+                    <span class="icone-circulo icone-laranja" aria-hidden="true"><i class="bi bi-telephone"></i></span>
+                    <strong>Suporte dedicado</strong>
+                    <span>Estamos sempre prontos para te ajudar.</span>
+                </li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- Chamada para ação -->
+    <section class="home-cta-area" aria-labelledby="titulo-cta">
+        <div class="container">
+            <div class="home-cta">
+                <div class="home-cta-texto">
+                    <h2 id="titulo-cta">Pronto para agendar?</h2>
+                    <p>Comece agora e deixe sua rotina mais fácil!</p>
+                    <a class="btn btn-light btn-lg" href="servicos_usuario.html">Buscar serviços</a>
+                </div>
+                <img class="home-cta-arte" src="../img/ilustracao-agendamento.png"
+                     alt="Mulher sorrindo olhando o celular, com um calendário e uma confirmação ao lado" width="900" height="430">
+            </div>
+        </div>
+    </section>
+</main>
+
+<footer class="rodape">
+    <div class="container rodape-grade">
+        <div>
+            <a class="rodape-marca" href="index.html">
+                <img src="../img/logo.png" alt="" width="40" height="40">
+                <span>Agenda Fácil<small>Seu tempo, do seu jeito.</small></span>
+            </a>
+        </div>
+        <nav aria-label="Links do rodapé">
+            <ul class="rodape-links">
+                <li><a href="index.html">Início</a></li>
+                <li><a href="servicos_usuario.html">Serviços</a></li>
+                <li><a href="meus_agendamentos_usuario.html">Meus agendamentos</a></li>
+                <li><a href="agendamentos_profissional.html">Área do profissional</a></li>
+                <li><a href="termos.html">Termos de uso</a></li>
+            </ul>
+        </nav>
+        <ul class="rodape-redes">
+            <li><a href="#" aria-label="Instagram do Agenda Fácil"><i class="bi bi-instagram" aria-hidden="true"></i></a></li>
+            <li><a href="#" aria-label="Facebook do Agenda Fácil"><i class="bi bi-facebook" aria-hidden="true"></i></a></li>
+            <li><a href="#" aria-label="YouTube do Agenda Fácil"><i class="bi bi-youtube" aria-hidden="true"></i></a></li>
+        </ul>
+    </div>
+    <p class="rodape-copia">© <span id="anoAtual">2026</span> Agenda Fácil. Todos os direitos reservados.</p>
+</footer>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+<script src="../js/mock-data.js"></script>
+<script src="../js/apiService.js"></script>
+<script src="../js/home.js"></script>
+</body>
 </html>

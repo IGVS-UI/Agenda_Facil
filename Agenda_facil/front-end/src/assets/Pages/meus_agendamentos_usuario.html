@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meus agendamentos | Agenda Fácil</title>
+    <link rel="icon" type="image/png" href="../img/logo.png">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="../styles/style.css">
+    <link rel="stylesheet" href="../styles/app.css">
+</head>
+<body>
+<a class="link-pular" href="#conteudo">Pular para o conteúdo</a>
+<header>
+    <nav class="navbar navbar-expand-lg" aria-label="Navegação principal">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center gap-2" href="index.html">
+                <img src="../img/logo.png" alt="" width="40" height="40">
+                <span>Agenda <span class="marca-destaque">Fácil</span></span>
+            </a>
+            <ul class="navbar-nav flex-row gap-4 ms-lg-4">
+                <li class="nav-item"><a class="nav-link" href="servicos_usuario.html">Serviços</a></li>
+                <li class="nav-item"><a class="nav-link active" aria-current="page" href="meus_agendamentos_usuario.html">Meus agendamentos</a></li>
+            </ul>
+            <div class="pc-usuario" id="nav-usuario"></div>
+        </div>
+    </nav>
+</header>
+
+<main class="container app-pagina" id="conteudo">
+    <header class="pp-topo">
+        <div>
+            <p class="sobretitulo">Área do cliente</p>
+            <h1>Meus agendamentos</h1>
+        </div>
+        <a class="btn btn-primary" href="servicos_usuario.html">Agendar um serviço</a>
+    </header>
+
+    <section class="pm-destaque" id="proximo" aria-labelledby="proximoEtiqueta"></section>
+
+    <dl class="pp-resumo pp-resumo-3" id="resumo"></dl>
+
+    <div class="pm-b-grade">
+        <section aria-labelledby="mesTitulo">
+            <div class="pm-b-mes">
+                <button type="button" class="btn btn-outline-primary btn-sm" id="mesAnterior" aria-label="Mês anterior">←</button>
+                <h2 id="mesTitulo"></h2>
+                <button type="button" class="btn btn-outline-primary btn-sm" id="mesSeguinte" aria-label="Próximo mês">→</button>
+            </div>
+            <ol class="pm-b-semana" aria-hidden="true"><li>D</li><li>S</li><li>T</li><li>Q</li><li>Q</li><li>S</li><li>S</li></ol>
+            <ol class="pm-b-dias" id="calendario"></ol>
+            <p class="pm-b-legenda">
+                <span><i class="pm-ponto pm-pendente"></i>Pendente</span>
+                <span><i class="pm-ponto pm-confirmado"></i>Confirmado</span>
+                <span><i class="pm-ponto pm-concluido"></i>Concluído</span>
+                <span><i class="pm-ponto pm-cancelado"></i>Cancelado</span>
+            </p>
+        </section>
+
+        <section aria-labelledby="diaTitulo" aria-live="polite">
+            <h2 id="diaTitulo"></h2>
+            <ul class="pm-lista" id="diaLista"></ul>
+        </section>
+    </div>
+</main>
+
+<!-- Confirmação de cancelamento -->
+<div class="modal fade" id="modalCancelar" tabindex="-1" aria-labelledby="modalCancelarTitulo" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title fs-5" id="modalCancelarTitulo">Cancelar este agendamento?</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <p id="cancelarTexto"></p>
+                <p class="ps-sub mb-0">O horário volta a ficar livre para outros clientes.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Manter agendamento</button>
+                <button type="button" class="btn btn-danger" id="confirmarCancelamento">Cancelar agendamento</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+<script src="../js/mock-data.js"></script>
+<script src="../js/apiService.js"></script>
+<script src="../js/comum.js"></script>
+<script src="../js/meus_agendamentos_usuario.js"></script>
+</body>
+</html>

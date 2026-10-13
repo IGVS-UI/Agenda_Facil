@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agenda | Agenda Fácil</title>
+    <link rel="icon" type="image/png" href="../img/logo.png">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="../styles/style.css">
+    <link rel="stylesheet" href="../styles/app.css">
+</head>
+<body>
+<a class="link-pular" href="#conteudo">Pular para o conteúdo</a>
+<header>
+    <nav class="navbar navbar-expand-lg" aria-label="Navegação principal">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center gap-2" href="agendamentos_profissional.html">
+                <img src="../img/logo.png" alt="" width="40" height="40">
+                <span>Agenda <span class="marca-destaque">Fácil</span></span>
+            </a>
+            <ul class="navbar-nav flex-row flex-wrap gap-3 gap-lg-4 ms-lg-4">
+                <li class="nav-item"><a class="nav-link active" aria-current="page" href="agendamentos_profissional.html">Agendamentos</a></li>
+                <li class="nav-item"><a class="nav-link" href="servicos_profissional.html">Meus serviços</a></li>
+                <li class="nav-item"><a class="nav-link" href="disponibilidade_profissional.html">Disponibilidade</a></li>
+            </ul>
+            <div class="pc-usuario" id="nav-usuario"></div>
+        </div>
+    </nav>
+</header>
+
+<main class="container app-pagina" id="conteudo">
+    <header class="pp-topo">
+        <div>
+            <p class="sobretitulo">Área privada · só você vê estes clientes</p>
+            <h1 id="titulo"></h1>
+        </div>
+        <div class="pp-dia-nav" role="group" aria-label="Navegar no calendário">
+            <button type="button" class="btn btn-outline-primary" id="anterior" aria-label="Período anterior">←</button>
+            <button type="button" class="btn btn-outline-primary" id="irHoje">Hoje</button>
+            <button type="button" class="btn btn-outline-primary" id="seguinte" aria-label="Próximo período">→</button>
+        </div>
+    </header>
+
+    <div class="pp-controles">
+        <div class="pp-visao" role="group" aria-label="Tipo de visão">
+            <button type="button" class="btn btn-outline-primary" data-visao="dia" aria-pressed="true">Dia</button>
+            <button type="button" class="btn btn-outline-primary" data-visao="semana" aria-pressed="false">Semana</button>
+        </div>
+        <div class="pp-filtro">
+            <label for="filtroStatus" class="form-label">Status</label>
+            <select id="filtroStatus" class="form-select form-select-sm">
+                <option value="">Todos</option>
+                <option value="PENDENTE">Pendentes</option>
+                <option value="CONFIRMADO">Confirmados</option>
+                <option value="CONCLUIDO">Concluídos</option>
+                <option value="CANCELADO">Cancelados</option>
+            </select>
+        </div>
+    </div>
+
+    <dl class="pp-resumo" id="resumo"></dl>
+
+    <section class="pp-proximo-cartao" id="proximoCliente" aria-labelledby="proximoTitulo" hidden></section>
+
+    <div id="visaoDia">
+        <ol class="pp-a-linha" id="linhaDoTempo" aria-live="polite"></ol>
+    </div>
+
+    <div id="visaoSemana" hidden>
+        <ol class="pp-semana" id="semana"></ol>
+    </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+<script src="../js/mock-data.js"></script>
+<script src="../js/apiService.js"></script>
+<script src="../js/comum.js"></script>
+<script src="../js/agendamentos_profissional.js"></script>
+</body>
+</html>
