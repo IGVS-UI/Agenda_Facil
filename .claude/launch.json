@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "prototype-home",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "5517", "--directory", "Agenda_facil/front-end/src/assets"],
+      "port": 5517
+    }
+  ]
+}
