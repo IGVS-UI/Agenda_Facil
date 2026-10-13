@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Disponibilidade | Agenda Fácil</title>
+    <link rel="icon" type="image/png" href="../img/logo.png">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="../styles/style.css">
+    <link rel="stylesheet" href="../styles/app.css">
+</head>
+<body>
+<a class="link-pular" href="#conteudo">Pular para o conteúdo</a>
+<header>
+    <nav class="navbar navbar-expand-lg" aria-label="Navegação principal">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center gap-2" href="agendamentos_profissional.html">
+                <img src="../img/logo.png" alt="" width="40" height="40">
+                <span>Agenda <span class="marca-destaque">Fácil</span></span>
+            </a>
+            <ul class="navbar-nav flex-row flex-wrap gap-3 gap-lg-4 ms-lg-4">
+                <li class="nav-item"><a class="nav-link" href="agendamentos_profissional.html">Agendamentos</a></li>
+                <li class="nav-item"><a class="nav-link" href="servicos_profissional.html">Meus serviços</a></li>
+                <li class="nav-item"><a class="nav-link active" aria-current="page" href="disponibilidade_profissional.html">Disponibilidade</a></li>
+            </ul>
+            <div class="pc-usuario" id="nav-usuario"></div>
+        </div>
+    </nav>
+</header>
+
+<main class="container app-pagina" id="conteudo">
+    <header class="pp-topo">
+        <div>
+            <p class="sobretitulo">Área do profissional</p>
+            <h1>Disponibilidade</h1>
+        </div>
+        <button type="button" class="btn btn-primary" id="salvar">Salvar alterações</button>
+    </header>
+
+    <p class="ps-sub">Você define os dias e horários. O cliente só consegue escolher entre os horários marcados aqui.
+        Agendamentos que já existem não são cancelados ao mudar a agenda.</p>
+
+    <div class="pp-status-msg" id="mensagem" role="status" aria-live="polite"></div>
+
+    <div class="pd-grade">
+        <section aria-labelledby="titulo-semana">
+            <h2 id="titulo-semana">Horários de atendimento</h2>
+            <p class="ps-sub">Ative os dias em que você atende e marque os horários.</p>
+            <div id="dias"></div>
+        </section>
+
+        <section aria-labelledby="titulo-bloqueios">
+            <h2 id="titulo-bloqueios">Bloquear horários</h2>
+            <p class="ps-sub">Folgas, consultas e imprevistos: o horário some para os clientes.</p>
+            <form class="pd-bloqueio" id="formBloqueio" novalidate>
+                <div>
+                    <label class="form-label" for="bloqueioData">Data</label>
+                    <input class="form-control" type="date" id="bloqueioData" aria-describedby="bloqueio-erro">
+                </div>
+                <div>
+                    <label class="form-label" for="bloqueioHora">Horário</label>
+                    <select class="form-select" id="bloqueioHora"></select>
+                </div>
+                <button type="submit" class="btn btn-outline-primary">Bloquear</button>
+                <div class="pa-erro pd-bloqueio-erro" id="bloqueio-erro" role="alert"></div>
+            </form>
+            <ul class="pd-lista-bloqueios" id="listaBloqueios" aria-live="polite"></ul>
+        </section>
+    </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+<script src="../js/mock-data.js"></script>
+<script src="../js/apiService.js"></script>
+<script src="../js/comum.js"></script>
+<script src="../js/disponibilidade_profissional.js"></script>
+</body>
+</html>
