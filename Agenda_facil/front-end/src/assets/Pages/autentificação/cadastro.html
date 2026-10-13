@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Criar conta | Agenda Fácil</title>
+    <link rel="icon" type="image/png" href="../../img/logo.png">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="../../styles/style.css">
+    <link rel="stylesheet" href="../../styles/auth.css">
+</head>
+<body>
+<header>
+    <nav class="navbar" aria-label="Navegação principal">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center gap-2" href="../index.html">
+                <img src="../../img/logo.png" alt="" width="40" height="40">
+                <span>Agenda <span class="marca-destaque">Fácil</span></span>
+            </a>
+            <a class="btn btn-outline-primary" href="login.html">Entrar</a>
+        </div>
+    </nav>
+</header>
+
+<main class="pa-fundo">
+    <form class="pa-cartao" data-acao="cadastro" data-tipo="cliente" novalidate aria-labelledby="titulo">
+        <a class="pa-logo" href="../index.html">
+            <img src="../../img/logo.png" alt="" width="36" height="36">
+            <span>Agenda <span class="marca-destaque">Fácil</span></span>
+        </a>
+        <h1 id="titulo">Criar conta</h1>
+
+        <fieldset class="pa-perfil">
+            <legend class="visually-hidden">Tipo de conta</legend>
+            <input type="radio" class="btn-check" name="tipo" id="tipo-cliente" value="cliente" checked>
+            <label class="btn btn-outline-primary" for="tipo-cliente">Sou cliente</label>
+            <input type="radio" class="btn-check" name="tipo" id="tipo-profissional" value="profissional">
+            <label class="btn btn-outline-primary" for="tipo-profissional">Sou profissional</label>
+        </fieldset>
+
+        <div class="pa-campo">
+            <label class="form-label" for="nome">Nome completo</label>
+            <input class="form-control" id="nome" name="nome" type="text" autocomplete="name" data-regra="obrigatorio" aria-describedby="nome-erro">
+            <div class="pa-erro" id="nome-erro" role="alert"></div>
+        </div>
+
+        <div class="pa-campo">
+            <label class="form-label" for="email">E-mail</label>
+            <input class="form-control" id="email" name="email" type="email" autocomplete="email" data-regra="email" aria-describedby="email-erro">
+            <div class="pa-erro" id="email-erro" role="alert"></div>
+        </div>
+
+        <div class="pa-campo">
+            <label class="form-label" for="senha">Senha</label>
+            <div class="input-group">
+                <input class="form-control" id="senha" name="senha" type="password" autocomplete="new-password" data-regra="senha" aria-describedby="senha-ajuda senha-erro">
+                <button type="button" class="btn btn-outline-secondary pa-olho" data-alvo="senha" aria-pressed="false" aria-label="Mostrar senha">Mostrar</button>
+            </div>
+            <div class="form-text" id="senha-ajuda">Mínimo de 6 caracteres.</div>
+            <div class="pa-erro" id="senha-erro" role="alert"></div>
+        </div>
+
+        <div class="pa-campo">
+            <label class="form-label" for="confirma">Confirmar senha</label>
+            <div class="input-group">
+                <input class="form-control" id="confirma" name="confirma" type="password" autocomplete="new-password" data-regra="confirma" aria-describedby="confirma-erro">
+                <button type="button" class="btn btn-outline-secondary pa-olho" data-alvo="confirma" aria-pressed="false" aria-label="Mostrar confirmação de senha">Mostrar</button>
+            </div>
+            <div class="pa-erro" id="confirma-erro" role="alert"></div>
+        </div>
+
+        <!-- Só aparece para o perfil Profissional -->
+        <fieldset class="pa-so-prof">
+            <legend>Dados do profissional</legend>
+
+            <div class="pa-campo">
+                <label class="form-label" for="especialidade">Serviço que você oferece</label>
+                <input class="form-control" id="especialidade" name="especialidade" type="text" data-regra="obrigatorio" aria-describedby="especialidade-ajuda especialidade-erro">
+                <div class="form-text" id="especialidade-ajuda">Ex.: corte de cabelo, manicure, nutrição.</div>
+                <div class="pa-erro" id="especialidade-erro" role="alert"></div>
+            </div>
+
+            <div class="pa-campo">
+                <label class="form-label" for="local">Nome do local de atendimento</label>
+                <input class="form-control" id="local" name="local" type="text" data-regra="obrigatorio" aria-describedby="local-erro">
+                <div class="pa-erro" id="local-erro" role="alert"></div>
+            </div>
+
+            <div class="pa-grade-end">
+                <div class="pa-campo">
+                    <label class="form-label" for="cep">CEP</label>
+                    <input class="form-control" id="cep" name="cep" type="text" inputmode="numeric" maxlength="9" placeholder="00000-000" autocomplete="postal-code" data-regra="cep" aria-describedby="cep-erro">
+                    <div class="pa-erro" id="cep-erro" role="alert"></div>
+                </div>
+                <div class="pa-campo">
+                    <label class="form-label" for="numero">Número</label>
+                    <input class="form-control" id="numero" name="numero" type="text" maxlength="10" placeholder="Ex.: 120 ou S/N" data-regra="obrigatorio" aria-describedby="numero-erro">
+                    <div class="pa-erro" id="numero-erro" role="alert"></div>
+                </div>
+                <div class="pa-campo pa-grade-largo">
+                    <label class="form-label" for="endereco">Endereço</label>
+                    <input class="form-control" id="endereco" name="endereco" type="text" placeholder="Rua, avenida…" autocomplete="address-line1" data-regra="obrigatorio" aria-describedby="endereco-erro">
+                    <div class="pa-erro" id="endereco-erro" role="alert"></div>
+                </div>
+                <div class="pa-campo">
+                    <label class="form-label" for="complemento">Complemento</label>
+                    <input class="form-control" id="complemento" name="complemento" type="text" placeholder="Opcional: sala, bloco…" autocomplete="address-line2">
+                </div>
+                <div class="pa-campo">
+                    <label class="form-label" for="bairro">Bairro</label>
+                    <input class="form-control" id="bairro" name="bairro" type="text" data-regra="obrigatorio" aria-describedby="bairro-erro">
+                    <div class="pa-erro" id="bairro-erro" role="alert"></div>
+                </div>
+                <div class="pa-campo">
+                    <label class="form-label" for="cidade">Cidade</label>
+                    <input class="form-control" id="cidade" name="cidade" type="text" autocomplete="address-level2" data-regra="obrigatorio" aria-describedby="cidade-erro">
+                    <div class="pa-erro" id="cidade-erro" role="alert"></div>
+                </div>
+                <div class="pa-campo">
+                    <label class="form-label" for="uf">Estado</label>
+                    <select class="form-select" id="uf" name="uf" autocomplete="address-level1" data-regra="uf" aria-describedby="uf-erro">
+                        <option value="">UF</option>
+                        <option>AC</option><option>AL</option><option>AP</option><option>AM</option><option>BA</option><option>CE</option>
+                        <option>DF</option><option>ES</option><option>GO</option><option>MA</option><option>MT</option><option>MS</option>
+                        <option>MG</option><option>PA</option><option>PB</option><option>PR</option><option>PE</option><option>PI</option>
+                        <option>RJ</option><option>RN</option><option>RS</option><option>RO</option><option>RR</option><option>SC</option>
+                        <option>SP</option><option>SE</option><option>TO</option>
+                    </select>
+                    <div class="pa-erro" id="uf-erro" role="alert"></div>
+                </div>
+            </div>
+        </fieldset>
+
+        <div class="pa-campo form-check">
+            <input class="form-check-input" type="checkbox" id="termos" data-regra="termos" aria-describedby="termos-erro">
+            <label class="form-check-label" for="termos">Li e aceito os <a href="../termos.html" target="_blank" rel="noopener">termos de uso<span class="visually-hidden"> (abre em nova aba)</span></a>.</label>
+            <div class="pa-erro" id="termos-erro" role="alert"></div>
+        </div>
+
+        <button class="btn btn-primary w-100 pa-enviar" type="submit">
+            <span class="spinner-border spinner-border-sm d-none" aria-hidden="true"></span>
+            <span>Criar conta</span>
+        </button>
+
+        <div class="pa-status" role="status" aria-live="polite"></div>
+
+        <p class="pa-rodape">Já tem conta? <a href="login.html">Entrar</a></p>
+    </form>
+</main>
+
+<script src="../../js/auth-ui.js"></script>
+</body>
+</html>
