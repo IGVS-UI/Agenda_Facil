@@ -11,7 +11,23 @@
  * Requer mock-data.js carregado antes deste arquivo.
  */
 
-const API_MODO = "mock";                       // "mock" | "http"
+/*
+ * Modo de dados: "mock" (localStorage) ou "http" (API Node/Express).
+ * Para testar com a API sem editar o código, abra qualquer página com ?api=http
+ * (volta ao mock com ?api=mock). A escolha fica guardada na aba do navegador.
+ */
+const CHAVE_MODO = "agendaFacil:apiModo";
+function escolherModo() {
+    const padrao = "mock";   // troque para "http" quando a API for o padrão
+    try {
+        const pedido = new URLSearchParams(location.search).get("api");
+        if (pedido === "http" || pedido === "mock") sessionStorage.setItem(CHAVE_MODO, pedido);
+        return sessionStorage.getItem(CHAVE_MODO) || padrao;
+    } catch (erro) {
+        return padrao;
+    }
+}
+const API_MODO = escolherModo();               // "mock" | "http"
 const API_URL = "http://localhost:3000/api";   // usado só no modo "http"
 
 const CHAVE_STORAGE = "agendaFacil:dados:v2";
@@ -273,12 +289,24 @@ const apiMock = {
 
 /* ---------- Implementação HTTP (usada quando a API existir) ---------- */
 
+// Quem está chamando. Hoje: cabeçalho de desenvolvimento (a API em AUTH_MODO=fake).
+// Na integração, aqui vai "Authorization: Bearer <token do Firebase>".
+function cabecalhosDeIdentidade() {
+    const usuario = typeof Comum !== "undefined" && Comum.usuarioAtual ? Comum.usuarioAtual() : null;
+    return usuario ? { "X-Usuario-Id": String(usuario.usuarioId) } : {};
+}
+
 async function requisicao(metodo, caminho, corpo) {
-    const resposta = await fetch(`${API_URL}${caminho}`, {
-        method: metodo,
-        headers: { "Content-Type": "application/json" },   // o token do Firebase entrará aqui
-        body: corpo ? JSON.stringify(corpo) : undefined
-    });
+    let resposta;
+    try {
+        resposta = await fetch(`${API_URL}${caminho}`, {
+            method: metodo,
+            headers: { "Content-Type": "application/json", ...cabecalhosDeIdentidade() },
+            body: corpo ? JSON.stringify(corpo) : undefined
+        });
+    } catch (erro) {
+        throw erroApi("Não foi possível falar com o servidor. Confira se a API está ligada.", 0);
+    }
     if (!resposta.ok) {
         const detalhe = await resposta.json().catch(() => ({}));
         throw erroApi(detalhe.mensagem || "Erro ao comunicar com o servidor.", resposta.status);
@@ -298,7 +326,7 @@ function montarQuery(filtros) {
 const apiHttp = {
     listarServicos: (f) => requisicao("GET", `/servicos${montarQuery(f)}`),
     listarProfissionais: (f) => requisicao("GET", `/profissionais${montarQuery(f)}`),
-    listarOrigens: async () => [],
+    listarOrigens: () => requisicao("GET", "/origens"),
     listarHorariosDisponiveis: (f) => requisicao("GET", `/horarios-disponiveis${montarQuery(f)}`),
     criarAgendamento: (d) => requisicao("POST", "/agendamentos", d),
     listarAgendamentos: (f) => requisicao("GET", `/agendamentos${montarQuery(f)}`),
