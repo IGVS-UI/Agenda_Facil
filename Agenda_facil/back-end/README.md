@@ -101,8 +101,9 @@ A API confere o token do Firebase e guarda o perfil (cliente/profissional) no My
 
 1. **Authentication > Sign-in method:** ative **E-mail/senha** e **Google**.
 2. **Authentication > Settings > Domínios autorizados:** confira se `localhost` está na lista (e adicione `127.0.0.1` se usar esse endereço).
-3. **Configurações do projeto (engrenagem) > Contas de serviço > Gerar nova chave privada:** baixa um arquivo JSON.
-   Salve como `back-end/credenciais/chave-firebase.json` (a pasta `credenciais/` está no `.gitignore`). **Esse arquivo dá acesso total ao projeto: nunca o envie ao GitHub nem a ninguém.**
+3. **(Opcional) Chave de serviço:** para conferir o login a API só precisa do `FIREBASE_PROJECT_ID`. A chave
+   (Configurações do projeto > Contas de serviço > Gerar nova chave privada) só será necessária para recursos administrativos.
+   Se gerar, salve em `back-end/credenciais/` (pasta no `.gitignore`). **Ela dá acesso total ao projeto: nunca a envie ao GitHub nem a ninguém.**
 
 ### Como ligar
 
@@ -110,7 +111,6 @@ No `src/.env`:
 ```
 AUTH_MODO=firebase
 FIREBASE_PROJECT_ID=projeto-ragozzinni
-FIREBASE_CREDENCIAIS=../credenciais/chave-firebase.json
 ```
 No navegador, abra qualquer página com `?auth=firebase&api=http` (volta ao simulado com `?auth=mock&api=mock`).
 Fluxos: **cadastro** cria a pessoa no Firebase e depois a conta no sistema (`POST /api/usuarios`); **login** descobre o perfil em `GET /api/me`;
