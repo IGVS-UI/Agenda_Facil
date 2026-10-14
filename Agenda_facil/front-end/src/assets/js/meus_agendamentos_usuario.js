@@ -13,7 +13,7 @@
         CANCELADO: { rotulo: "Cancelado", cls: "cancelado" }
     };
     const ATIVOS = ["PENDENTE", "CONFIRMADO"];
-    const clienteId = Comum.USUARIOS.cliente.id;
+    let clienteId;
 
     const elProximo = document.getElementById("proximo");
     const elResumo = document.getElementById("resumo");
@@ -162,6 +162,9 @@
         carregar();
     });
 
-    Comum.montarUsuario(document.getElementById("nav-usuario"), "cliente");
-    carregar();
+    Comum.sessao("cliente").then(() => {
+        clienteId = Comum.USUARIOS.cliente.id;
+        Comum.montarUsuario(document.getElementById("nav-usuario"), "cliente");
+        carregar();
+    });
 })();

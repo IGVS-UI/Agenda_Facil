@@ -6,7 +6,7 @@
  */
 (function () {
     const { esc, iso, deIso } = Comum;
-    const profissionalId = Comum.USUARIOS.profissional.id;
+    let profissionalId;
 
     const DIAS = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
     const HORAS = Array.from({ length: 16 }, (_, i) => `${String(i + 6).padStart(2, "0")}:00`);   // 06:00 a 21:00
@@ -122,6 +122,7 @@
     });
 
     async function iniciar() {
+        profissionalId = Comum.USUARIOS.profissional.id;
         Comum.montarUsuario(document.getElementById("nav-usuario"), "profissional");
         const dados = await apiService.obterDisponibilidade(profissionalId);
         disponibilidade = dados.disponibilidade;
@@ -130,5 +131,5 @@
         desenharBloqueios();
         atualizarHorasBloqueio();
     }
-    iniciar();
+    Comum.sessao("profissional").then(iniciar);
 })();

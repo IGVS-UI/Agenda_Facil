@@ -21,12 +21,31 @@ const Comum = (function () {
     const deIso = (texto) => new Date(`${texto}T00:00:00`);
     const km = (n) => `${n.toFixed(1).replace(".", ",")} km`;
 
+    /*
+     * Sessão da página. O authService.js (módulo) avisa aqui quando carrega.
+     *   modo mock     -> segue direto com o usuário de demonstração
+     *   modo firebase -> só segue se estiver logado COM o perfil certo (senão, redireciona)
+     * Uso em cada página interna:  Comum.sessao("cliente").then(iniciar);
+     */
+    const authPronto = new Promise((resolver) => { window.__resolverAuth = resolver; });
+    async function sessao(perfil) {
+        const auth = await authPronto;
+        return auth.modo === "firebase" ? auth.protegerPagina(perfil) : USUARIOS[perfil];
+    }
+
     // "Olá, Igor" + botão Sair na navbar
     function montarUsuario(alvo, perfil) {
         perfilAtual = perfil;
         alvo.innerHTML = `<span class="pc-ola">Olá, <strong>${esc(USUARIOS[perfil].nome.split(" ")[0])}</strong></span>
-            <a class="btn btn-outline-primary btn-sm" href="autentificação/login.html?perfil=${perfil}">Sair</a>`;
+            <a class="btn btn-outline-primary btn-sm" href="autentificação/login.html?perfil=${perfil}" data-sair>Sair</a>`;
+        alvo.querySelector("[data-sair]").addEventListener("click", async (e) => {
+            const auth = await authPronto;
+            if (auth.modo !== "firebase") return;            // no mock, o link já leva ao login
+            e.preventDefault();
+            await auth.sair();
+            location.href = e.currentTarget.getAttribute("href");
+        });
     }
 
-    return { USUARIOS, usuarioAtual, esc, moeda, iso, deIso, km, montarUsuario };
+    return { USUARIOS, usuarioAtual, sessao, esc, moeda, iso, deIso, km, montarUsuario };
 })();

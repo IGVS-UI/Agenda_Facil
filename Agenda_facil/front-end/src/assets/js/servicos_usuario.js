@@ -246,5 +246,5 @@
         if (inicialServico) { estado.grupo = chaveGrupo(inicialServico); estado.etapa = 2; }
         desenhar(false);
     }
-    iniciar();
+    Comum.sessao("cliente").then(iniciar);
 })();

@@ -289,9 +289,14 @@ const apiMock = {
 
 /* ---------- Implementação HTTP (usada quando a API existir) ---------- */
 
-// Quem está chamando. Hoje: cabeçalho de desenvolvimento (a API em AUTH_MODO=fake).
-// Na integração, aqui vai "Authorization: Bearer <token do Firebase>".
-function cabecalhosDeIdentidade() {
+// Quem está chamando.
+//   login real (authService em modo firebase): "Authorization: Bearer <token do Firebase>"
+//   desenvolvimento (a API em AUTH_MODO=fake):  cabeçalho X-Usuario-Id
+async function cabecalhosDeIdentidade() {
+    if (typeof AuthService !== "undefined" && AuthService.modo === "firebase") {
+        const token = await AuthService.obterToken();
+        return token ? { Authorization: `Bearer ${token}` } : {};
+    }
     const usuario = typeof Comum !== "undefined" && Comum.usuarioAtual ? Comum.usuarioAtual() : null;
     return usuario ? { "X-Usuario-Id": String(usuario.usuarioId) } : {};
 }
@@ -301,7 +306,7 @@ async function requisicao(metodo, caminho, corpo) {
     try {
         resposta = await fetch(`${API_URL}${caminho}`, {
             method: metodo,
-            headers: { "Content-Type": "application/json", ...cabecalhosDeIdentidade() },
+            headers: { "Content-Type": "application/json", ...(await cabecalhosDeIdentidade()) },
             body: corpo ? JSON.stringify(corpo) : undefined
         });
     } catch (erro) {
@@ -309,7 +314,9 @@ async function requisicao(metodo, caminho, corpo) {
     }
     if (!resposta.ok) {
         const detalhe = await resposta.json().catch(() => ({}));
-        throw erroApi(detalhe.mensagem || "Erro ao comunicar com o servidor.", resposta.status);
+        const erro = erroApi(detalhe.mensagem || "Erro ao comunicar com o servidor.", resposta.status);
+        erro.codigoApi = detalhe.codigo;        // ex.: CADASTRO_INCOMPLETO
+        throw erro;
     }
     return resposta.status === 204 ? null : resposta.json();
 }
