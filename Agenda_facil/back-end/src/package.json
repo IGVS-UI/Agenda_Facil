@@ -1,0 +1,21 @@
+{
+  "name": "agenda-facil-api",
+  "version": "0.1.0",
+  "description": "API REST do Agenda Fácil (Node.js + Express). Hoje com dados em memória; depois, MySQL.",
+  "main": "server.js",
+  "private": true,
+  "type": "commonjs",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env server.js",
+    "dev": "node --watch --env-file-if-exists=.env server.js",
+    "test": "node --test testes/api.test.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "mysql2": "^3.24.6"
+  }
+}
