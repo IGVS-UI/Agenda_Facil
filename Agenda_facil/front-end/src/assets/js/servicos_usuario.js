@@ -160,7 +160,7 @@
     async function carregarDias() {
         const dias = [];
         for (let i = 0; i < DIAS_VISIVEIS; i++) { const d = new Date(); d.setDate(d.getDate() + i); dias.push(d); }
-        const listas = await Promise.all(dias.map((d) => apiService.listarHorariosDisponiveis({ profissionalId: estado.profId, data: iso(d) })));
+        const listas = await Promise.all(dias.map((d) => apiService.listarHorariosDisponiveis({ profissionalId: estado.profId, data: iso(d), servicoId: servico().id })));
         estado.dias = dias.map((d, i) => ({ d, id: iso(d), horarios: listas[i], livres: listas[i].filter((h) => h.estado === "disponivel").length }));
     }
 

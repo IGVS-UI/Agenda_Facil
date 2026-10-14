@@ -534,3 +534,26 @@ main {
         align-items: flex-start;
     }
 }
+
+/* Aviso do modo (demonstração x login real), mostrado pelo authService.js */
+.modo-aviso {
+    padding: 0.4rem 1rem;
+    font-size: 0.85rem;
+    text-align: center;
+}
+
+.modo-mock {
+    background-color: #FFF0DE;
+    color: #8A4B00;
+}
+
+.modo-firebase {
+    background-color: #E3F7EE;
+    color: #17694A;
+}
+
+.modo-aviso a {
+    margin-left: 0.25rem;
+    color: inherit;
+    font-weight: 600;
+}

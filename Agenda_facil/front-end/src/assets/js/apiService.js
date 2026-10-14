@@ -84,23 +84,27 @@ function horarioJaPassou(data, hora) {
 }
 
 /*
- * Estado de um horário:
+ * Estado de um horário (mesma regra da API):
  *   "disponivel"   - pode ser escolhido
- *   "ocupado"      - já existe agendamento pendente/confirmado
+ *   "ocupado"      - o tempo do serviço se sobrepõe a um agendamento pendente/confirmado
  *   "indisponivel" - bloqueado pelo profissional ou já passou
+ * Compara intervalos: um serviço de 90 min às 09:00 ocupa até 10:30.
  */
-function estadoDoHorario(banco, profissional, data, hora) {
+const minutosDe = (hhmm) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5));
+const seSobrepoem = (a, b) => a.inicio < b.fim && b.inicio < a.fim;
+
+function estadoDoHorario(banco, profissional, data, hora, duracao = 60, ignorarId) {
+    const pedido = { inicio: minutosDe(hora), fim: minutosDe(hora) + duracao };
     if (horarioJaPassou(data, hora)) return "indisponivel";
 
-    const bloqueado = profissional.bloqueios.some(b => b.data === data && b.hora === hora);
+    const bloqueado = profissional.bloqueios.some(b => b.data === data && seSobrepoem(pedido, { inicio: minutosDe(b.hora), fim: minutosDe(b.hora) + 60 }));
     if (bloqueado) return "indisponivel";
 
-    const ocupado = banco.agendamentos.some(a =>
-        a.profissionalId === profissional.id &&
-        a.data === data &&
-        a.hora === hora &&
-        STATUS_OCUPAM_HORARIO.includes(a.status)
-    );
+    const ocupado = banco.agendamentos.some(a => {
+        if (a.profissionalId !== profissional.id || a.data !== data || !STATUS_OCUPAM_HORARIO.includes(a.status) || a.id === ignorarId) return false;
+        const servico = banco.servicos.find(s => s.id === a.servicoId);
+        return seSobrepoem(pedido, { inicio: minutosDe(a.hora), fim: minutosDe(a.hora) + (servico ? servico.duracaoMin : 60) });
+    });
     return ocupado ? "ocupado" : "disponivel";
 }
 
@@ -135,16 +139,18 @@ const apiMock = {
         return copiar((MockData.origens || []).map(o => ({ id: o.id, nome: o.nome })));
     },
 
-    // GET /api/horarios-disponiveis?profissionalId=&data=AAAA-MM-DD
+    // GET /api/horarios-disponiveis?profissionalId=&data=AAAA-MM-DD[&servicoId=]
     // Retorna [{ hora: "10:00", estado: "disponivel" | "ocupado" | "indisponivel" }]
-    async listarHorariosDisponiveis({ profissionalId, data }) {
+    async listarHorariosDisponiveis({ profissionalId, data, servicoId }) {
         const banco = carregarBanco();
         const profissional = banco.profissionais.find(p => p.id === Number(profissionalId));
         if (!profissional) throw erroApi("Profissional não encontrado.", 404);
 
         const diaSemana = new Date(`${data}T00:00:00`).getDay();
         const horas = profissional.disponibilidade[diaSemana] || [];
-        return horas.map(hora => ({ hora, estado: estadoDoHorario(banco, profissional, data, hora) }));
+        const servico = banco.servicos.find(s => s.id === Number(servicoId));
+        const duracao = servico ? servico.duracaoMin : 60;
+        return horas.map(hora => ({ hora, estado: estadoDoHorario(banco, profissional, data, hora, duracao) }));
     },
 
     // POST /api/agendamentos
@@ -154,7 +160,7 @@ const apiMock = {
         if (!profissional) throw erroApi("Profissional não encontrado.", 404);
 
         // O back-end repetirá esta verificação: é ele quem impede conflitos de verdade.
-        const horarios = await apiMock.listarHorariosDisponiveis({ profissionalId, data });
+        const horarios = await apiMock.listarHorariosDisponiveis({ profissionalId, data, servicoId });
         const escolhido = horarios.find(h => h.hora === hora);
         if (!escolhido || escolhido.estado !== "disponivel") {
             throw erroApi("Este horário não está mais disponível.", 409);
@@ -258,6 +264,17 @@ const apiMock = {
         return copiar(servico);
     },
 
+    // DELETE /api/servicos/:id  (só serviço que nunca foi agendado)
+    async excluirServico(id) {
+        const banco = carregarBanco();
+        if (banco.agendamentos.some(a => a.servicoId === Number(id))) {
+            throw erroApi("Este serviço já tem agendamentos e não pode ser excluído. Desative-o para que não apareça mais aos clientes.", 409);
+        }
+        banco.servicos = banco.servicos.filter(s => s.id !== Number(id));
+        banco.profissionais.forEach(pr => { pr.servicosIds = pr.servicosIds.filter(sid => sid !== Number(id)); });
+        salvarBanco(banco);
+    },
+
     /* ----- Área do profissional: disponibilidade ----- */
 
     // GET /api/profissionais/:id/disponibilidade
@@ -342,6 +359,7 @@ const apiHttp = {
     excluirAgendamento: (id) => requisicao("DELETE", `/agendamentos/${id}`),
     criarServico: (d) => requisicao("POST", "/servicos", d),
     atualizarServico: (id, d) => requisicao("PUT", `/servicos/${id}`, d),
+    excluirServico: (id) => requisicao("DELETE", `/servicos/${id}`),
     obterDisponibilidade: (id) => requisicao("GET", `/profissionais/${id}/disponibilidade`),
     salvarDisponibilidade: (id, d) => requisicao("PUT", `/profissionais/${id}/disponibilidade`, d),
     restaurarDadosExemplo: async () => {}

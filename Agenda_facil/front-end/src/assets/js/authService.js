@@ -161,6 +161,24 @@ function traduzirErro(erro) {
     return MENSAGENS[erro && erro.code] || (erro && erro.codigoApi ? erro.message : null) || (erro && erro.message) || "Algo deu errado. Tente novamente.";
 }
 
+/*
+ * Aviso no topo da página dizendo em que modo o sistema está. Sem isto, no modo de demonstração
+ * parece que o cadastro funcionou de verdade (aceita e-mail repetido, nada aparece no Firebase).
+ */
+function mostrarAvisoDoModo() {
+    const aviso = document.createElement("div");
+    aviso.className = `modo-aviso modo-${modo}`;
+    aviso.setAttribute("role", "note");
+    if (modo === "firebase") {
+        aviso.innerHTML = '<strong>Login real (Firebase)</strong> <a href="?auth=mock&api=mock">voltar ao modo demonstração</a>';
+    } else {
+        aviso.innerHTML = '<strong>Modo demonstração:</strong> login e cadastro são simulados e nada é salvo no Firebase. '
+            + '<a href="?auth=firebase&api=http">Usar o login real</a> (precisa da API ligada).';
+    }
+    document.body.prepend(aviso);
+}
+if (document.body) mostrarAvisoDoModo(); else document.addEventListener("DOMContentLoaded", mostrarAvisoDoModo);
+
 const AuthService = {
     modo, HOME, LOGIN, CADASTRO_CONCLUIR,
     obterToken, usuarioFirebase, meuPerfil, entrar, entrarComGoogle, cadastrar, concluirCadastro, nomeSugerido,

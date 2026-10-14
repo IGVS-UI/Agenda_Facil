@@ -136,11 +136,11 @@
             spinner.classList.add("d-none");
             if (form.dataset.acao === "login") {
                 if (email === "erro@teste.com") mostrarStatus("E-mail ou senha incorretos. Confira os dados e tente novamente.", "erro");
-                else concluirLogin("Login realizado.");
+                else concluirLogin("Login simulado (modo demonstração).");
             } else if (form.dataset.acao === "recuperar") {
                 mostrarStatus('Se este e-mail estiver cadastrado, enviamos as instruções para criar uma nova senha. <a href="login.html">Voltar ao login</a>', "ok");
             } else {
-                mostrarStatus('Conta criada com sucesso. <a href="login.html">Ir para o login</a>', "ok");
+                mostrarStatus('Conta criada na <strong>simulação</strong> (nada foi salvo no Firebase). <a href="login.html">Ir para o login</a>', "ok");
             }
         }, 1200);
     }
@@ -227,6 +227,12 @@
         const sugestao = await AuthService.nomeSugerido();
         if (sugestao.nome) form.querySelector("#nome").value = sugestao.nome;
     }
+    // A dica "erro@teste.com simula login recusado" só vale no modo demonstração
+    window.addEventListener("load", () => {
+        const dica = form.querySelector(".pa-dica");
+        if (dica && firebaseAtivo()) dica.hidden = true;
+    });
+
     if (params.get("concluir") === "1") {
         // espera o authService (módulo) carregar
         window.addEventListener("load", () => { prepararConclusao().catch((e) => { status.className = "pa-status pa-status-erro"; status.textContent = e.message; }); });
