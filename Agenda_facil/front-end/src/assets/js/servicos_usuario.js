@@ -19,16 +19,26 @@
     const elBotoes = document.getElementById("botoesEtapa");
 
     const estado = {
-        etapa: 1, servicoId: null, profId: null, data: null, hora: null,
+        etapa: 1, grupo: null, profId: null, data: null, hora: null,
         origem: null, servicos: [], origens: [], profissionais: [],
         dias: [],          // [{ id, d, horarios, livres }] do profissional escolhido
         agendamento: null, erro: ""
     };
 
-    const servico = () => estado.servicos.find((s) => s.id === estado.servicoId);
+    // No banco cada serviço pertence a UM profissional, então o mesmo serviço (ex.: "Limpeza de pele")
+    // pode existir várias vezes. Para o cliente, eles formam um grupo, escolhido pelo nome.
+    const chaveGrupo = (s) => s.nome.trim().toLowerCase();
+    const idsDoGrupo = () => estado.servicos.filter((s) => chaveGrupo(s) === estado.grupo).map((s) => s.id);
+    // O serviço "de verdade": o do profissional escolhido (ou o primeiro do grupo, antes de escolher)
+    const servico = () => {
+        const ids = idsDoGrupo();
+        const doProfissional = estado.profId && prof() ? ids.find((id) => prof().servicosIds.includes(id)) : null;
+        return estado.servicos.find((s) => s.id === (doProfissional || ids[0]));
+    };
     const prof = () => estado.profissionais.find((p) => p.id === estado.profId);
-    const nota = (n) => `<span class="ps-nota" aria-label="Nota ${n}">★ ${n.toFixed(1).replace(".", ",")}</span>`;
-    const profsDoServico = () => estado.profissionais.filter((p) => p.servicosIds.includes(estado.servicoId));
+    // A avaliação ainda não existe no banco (funcionalidade futura): sem nota, não mostra nada
+    const nota = (n) => (n == null ? "" : `<span class="ps-nota" aria-label="Nota ${n}">★ ${n.toFixed(1).replace(".", ",")}</span>`);
+    const profsDoServico = () => { const ids = idsDoGrupo(); return estado.profissionais.filter((p) => p.servicosIds.some((id) => ids.includes(id))); };
 
     /* ---------- Cabeçalho das etapas ---------- */
 
@@ -44,14 +54,17 @@
     /* ---------- Conteúdo de cada etapa ---------- */
 
     function etapa1() {
+        const grupos = [];
+        estado.servicos.forEach((s) => { if (!grupos.some((g) => chaveGrupo(g) === chaveGrupo(s))) grupos.push(s); });
         const menorDistancia = (s) => {
-            const locais = estado.profissionais.filter((p) => p.servicosIds.includes(s.id));
+            const mesmos = estado.servicos.filter((x) => chaveGrupo(x) === chaveGrupo(s)).map((x) => x.id);
+            const locais = estado.profissionais.filter((p) => p.servicosIds.some((id) => mesmos.includes(id)));
             return locais.length ? km(Math.min(...locais.map((p) => p.distanciaKm))) : "sem locais";
         };
         return `<h2 tabindex="-1" id="tituloEtapa">Qual serviço você quer agendar?</h2>
             <fieldset class="ps-lista-radio"><legend class="visually-hidden">Serviços disponíveis</legend>
-            ${estado.servicos.map((s) => `<div class="ps-opcao">
-                <input type="radio" class="btn-check" name="servico" id="svc-${s.id}" value="${s.id}" ${s.id === estado.servicoId ? "checked" : ""}>
+            ${grupos.map((s) => `<div class="ps-opcao">
+                <input type="radio" class="btn-check" name="servico" id="svc-${s.id}" value="${esc(chaveGrupo(s))}" ${chaveGrupo(s) === estado.grupo ? "checked" : ""}>
                 <label class="ps-opcao-label" for="svc-${s.id}">
                     <span><strong>${esc(s.nome)}</strong><small>${esc(s.categoria)} · ${s.duracaoMin} min · ${esc(s.descricao)}</small></span>
                     <span class="ps-opcao-lado"><strong>${moeda(s.preco)}</strong><small>a partir de ${menorDistancia(s)}</small></span>
@@ -130,7 +143,7 @@
 
     // Cada etapa exige uma escolha antes de continuar (a confirmação não exige nada)
     function podeAvancar() {
-        return Boolean([null, estado.servicoId, estado.profId, estado.data, estado.hora, true][estado.etapa]);
+        return Boolean([null, estado.grupo, estado.profId, estado.data, estado.hora, true][estado.etapa]);
     }
 
     function desenhar(focar = true) {
@@ -170,7 +183,7 @@
         elAvancar.textContent = "Confirmando…";
         try {
             estado.agendamento = await apiService.criarAgendamento({
-                clienteId: Comum.USUARIOS.cliente.id, servicoId: estado.servicoId,
+                clienteId: Comum.USUARIOS.cliente.id, servicoId: servico().id,
                 profissionalId: estado.profId, data: estado.data, hora: estado.hora
             });
             desenhar();
@@ -186,7 +199,7 @@
     }
 
     function reiniciar() {
-        Object.assign(estado, { etapa: 1, servicoId: null, profId: null, data: null, hora: null, dias: [], agendamento: null, erro: "" });
+        Object.assign(estado, { etapa: 1, grupo: null, profId: null, data: null, hora: null, dias: [], agendamento: null, erro: "" });
         desenhar();
     }
 
@@ -195,7 +208,7 @@
 
     elConteudo.addEventListener("change", async (e) => {
         if (e.target.name === "servico") {
-            estado.servicoId = Number(e.target.value);
+            estado.grupo = e.target.value;
             if (!profsDoServico().find((p) => p.id === estado.profId)) estado.profId = null;
             estado.data = null; estado.hora = null;
             elAvancar.disabled = !podeAvancar();
@@ -229,8 +242,9 @@
 
         // Começa já na etapa 2 quando a página inicial manda ?servico=ID
         const inicial = Number(new URLSearchParams(location.search).get("servico"));
-        if (servicos.find((s) => s.id === inicial)) { estado.servicoId = inicial; estado.etapa = 2; }
+        const inicialServico = servicos.find((s) => s.id === inicial);
+        if (inicialServico) { estado.grupo = chaveGrupo(inicialServico); estado.etapa = 2; }
         desenhar(false);
     }
-    iniciar();
+    Comum.sessao("cliente").then(iniciar);
 })();

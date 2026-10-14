@@ -13,7 +13,7 @@
         CANCELADO: { rotulo: "Cancelado", cls: "cancelado" }
     };
     const ATIVOS = ["PENDENTE", "CONFIRMADO"];
-    const profissionalId = Comum.USUARIOS.profissional.id;
+    let profissionalId;
 
     const el = (id) => document.getElementById(id);
     const elTitulo = el("titulo"), elResumo = el("resumo"), elLinha = el("linhaDoTempo"), elSemana = el("semana");
@@ -178,6 +178,9 @@
         carregar();
     });
 
-    Comum.montarUsuario(el("nav-usuario"), "profissional");
-    carregar();
+    Comum.sessao("profissional").then(() => {
+        profissionalId = Comum.USUARIOS.profissional.id;
+        Comum.montarUsuario(el("nav-usuario"), "profissional");
+        carregar();
+    });
 })();

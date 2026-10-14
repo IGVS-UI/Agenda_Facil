@@ -4,7 +4,7 @@
  */
 (function () {
     const { esc, moeda } = Comum;
-    const profissionalId = Comum.USUARIOS.profissional.id;
+    let profissionalId;
 
     const elLista = document.getElementById("listaServicos");
     const elMensagem = document.getElementById("mensagem");
@@ -126,6 +126,9 @@
         }
     });
 
-    Comum.montarUsuario(document.getElementById("nav-usuario"), "profissional");
-    carregar();
+    Comum.sessao("profissional").then(() => {
+        profissionalId = Comum.USUARIOS.profissional.id;
+        Comum.montarUsuario(document.getElementById("nav-usuario"), "profissional");
+        carregar();
+    });
 })();

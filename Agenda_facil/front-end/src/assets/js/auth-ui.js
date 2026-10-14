@@ -1,11 +1,16 @@
 /*
- * Comportamento dos formulários de login e cadastro (validação, mostrar senha, carregamento).
- * Tudo é simulado: o Firebase Authentication entra na etapa de integração.
- * No login, erro@teste.com simula "e-mail ou senha incorretos".
+ * Comportamento dos formulários de login, cadastro e recuperação de senha
+ * (validação, mostrar senha, carregamento, mensagens de erro).
+ *
+ * Dois modos (escolhidos pelo authService.js, com ?auth=firebase ou ?auth=mock):
+ *   mock     -> tudo simulado (padrão). No login, erro@teste.com simula "e-mail ou senha incorretos".
+ *   firebase -> Firebase Authentication de verdade; a API guarda o perfil (cliente/profissional).
  */
 (function () {
     const form = document.querySelector("form[data-acao]");
     const params = new URLSearchParams(location.search);
+
+    const firebaseAtivo = () => window.AuthService && AuthService.modo === "firebase";
 
     // Para onde cada perfil vai depois de entrar (simulado)
     const DESTINOS = {
@@ -21,6 +26,8 @@
             : /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(el.value.trim()) ? "" : "Informe um e-mail válido, como nome@email.com.",
         senha: (el) => !el.value ? "Informe sua senha." : el.value.length >= 6 ? "" : "A senha deve ter pelo menos 6 caracteres.",
         confirma: (el) => !el.value ? "Confirme sua senha." : el.value === form.querySelector("#senha").value ? "" : "As senhas não são iguais.",
+        telefone: (el) => !el.value.trim() ? "Informe o seu telefone."
+            : el.value.replace(/\D/g, "").length >= 10 ? "" : "Informe o telefone com DDD, como (11) 91234-5678.",
         cep: (el) => !el.value.trim() ? "Informe o CEP."
             : el.value.replace(/\D/g, "").length === 8 ? "" : "O CEP deve ter 8 números, como 01310-100.",
         uf: (el) => el.value ? "" : "Escolha o estado.",
@@ -61,6 +68,53 @@
         setTimeout(() => { location.href = destino.href; }, 900);
     }
 
+    /* ---------- Firebase de verdade ---------- */
+
+    // Dados que a API pede no cadastro (o e-mail NÃO vai: a API pega do token do Firebase)
+    function dadosDoCadastro() {
+        const valor = (id) => (form.querySelector(`#${id}`).value || "").trim();
+        const perfil = perfilEscolhido();
+        const dados = { perfil, nome: valor("nome"), telefone: valor("telefone") };
+        if (perfil === "profissional") {
+            dados.profissional = {
+                especialidade: valor("especialidade"), nomeLocal: valor("local"), cep: valor("cep"),
+                logradouro: valor("endereco"), numero: valor("numero"), complemento: valor("complemento"),
+                bairro: valor("bairro"), cidade: valor("cidade"), uf: valor("uf")
+            };
+        }
+        return dados;
+    }
+
+    // Leva a pessoa para a página do perfil que o BANCO diz que ela tem
+    function irParaAreaDo(eu, aviso) {
+        if (eu.incompleto) {
+            mostrarStatus("Falta concluir o seu cadastro. Levando você para lá…", "ok");
+            return setTimeout(() => { location.href = `../${AuthService.CADASTRO_CONCLUIR}`; }, 900);
+        }
+        const destino = `../${AuthService.HOME[eu.perfil]}`;
+        mostrarStatus(`${aviso || "Tudo certo."} <a href="${destino}">Continuar</a>`, "ok");
+        setTimeout(() => { location.href = destino; }, 900);
+    }
+
+    async function enviarComFirebase() {
+        const campo = (id) => { const e = form.querySelector(`#${id}`); return e ? e.value.trim() : ""; };
+        if (form.dataset.acao === "login") {
+            const escolhido = perfilEscolhido();
+            const eu = await AuthService.entrar(campo("email"), form.querySelector("#senha").value);
+            const aviso = !eu.incompleto && eu.perfil !== escolhido ? `Esta conta é de ${eu.perfil}, entrando como ${eu.perfil}.` : "Login realizado.";
+            return irParaAreaDo(eu, aviso);
+        }
+        if (form.dataset.acao === "recuperar") {
+            await AuthService.recuperarSenha(campo("email"));
+            return mostrarStatus('Se este e-mail estiver cadastrado, enviamos as instruções para criar uma nova senha. <a href="login.html">Voltar ao login</a>', "ok");
+        }
+        // cadastro (novo) ou conclusão de cadastro (quem entrou pelo Google e ainda não tem conta no sistema)
+        const eu = form.dataset.concluir === "1"
+            ? await AuthService.concluirCadastro(dadosDoCadastro())
+            : await AuthService.cadastrar(campo("email"), form.querySelector("#senha").value, dadosDoCadastro());
+        irParaAreaDo(eu, "Conta criada com sucesso.");
+    }
+
     function enviar() {
         if (!validarFormulario()) return;
         const botao = form.querySelector(".pa-enviar");
@@ -68,6 +122,13 @@
         botao.disabled = true;
         spinner.classList.remove("d-none");
         mostrarStatus("", "");
+
+        if (firebaseAtivo()) {
+            enviarComFirebase()
+                .catch((erro) => mostrarStatus(AuthService.traduzirErro(erro), "erro"))
+                .finally(() => { botao.disabled = false; spinner.classList.add("d-none"); });
+            return;
+        }
         const email = form.querySelector("#email").value.trim().toLowerCase();
 
         setTimeout(() => {
@@ -121,6 +182,13 @@
             google.disabled = true;
             texto.textContent = "Conectando ao Google…";
             mostrarStatus("", "");
+            if (firebaseAtivo()) {
+                AuthService.entrarComGoogle()
+                    .then((eu) => irParaAreaDo(eu, "Login com o Google realizado."))
+                    .catch((erro) => mostrarStatus(AuthService.traduzirErro(erro), "erro"))
+                    .finally(() => { google.disabled = false; texto.textContent = "Continuar com o Google"; });
+                return;
+            }
             setTimeout(() => {
                 google.disabled = false;
                 texto.textContent = "Continuar com o Google";
@@ -135,5 +203,32 @@
     if (inicial === "profissional") {
         const radio = form.querySelector("input[type='radio'][value='profissional']");
         if (radio) { radio.checked = true; form.dataset.tipo = "profissional"; }
+    }
+
+    /* ---------- cadastro.html?concluir=1: 1º login com Google, falta escolher o perfil e preencher os dados ---------- */
+
+    async function prepararConclusao() {
+        const aviso = (texto) => { status.className = "pa-status pa-status-erro"; status.textContent = texto; };
+        if (!firebaseAtivo()) return;                       // no mock não existe "cadastro incompleto"
+        const usuario = await AuthService.usuarioFirebase();
+        if (!usuario) { location.replace("login.html"); return; }
+
+        form.dataset.concluir = "1";
+        document.getElementById("titulo").textContent = "Concluir cadastro";
+        form.querySelector(".pa-enviar span:last-child").textContent = "Concluir cadastro";
+        const intro = document.createElement("p");
+        intro.className = "pa-sub";
+        intro.textContent = `Você entrou como ${usuario.email}. Falta só escolher o seu perfil e completar os dados.`;
+        document.getElementById("titulo").after(intro);
+        // e-mail e senha já existem no Firebase
+        ["email", "senha", "confirma"].forEach((id) => { form.querySelector(`#${id}`).closest(".pa-campo").hidden = true; });
+        const rodape = form.querySelector(".pa-rodape");
+        if (rodape) rodape.hidden = true;
+        const sugestao = await AuthService.nomeSugerido();
+        if (sugestao.nome) form.querySelector("#nome").value = sugestao.nome;
+    }
+    if (params.get("concluir") === "1") {
+        // espera o authService (módulo) carregar
+        window.addEventListener("load", () => { prepararConclusao().catch((e) => { status.className = "pa-status pa-status-erro"; status.textContent = e.message; }); });
     }
 })();

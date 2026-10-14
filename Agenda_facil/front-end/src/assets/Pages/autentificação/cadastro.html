@@ -45,6 +45,12 @@
         </div>
 
         <div class="pa-campo">
+            <label class="form-label" for="telefone">Telefone com DDD</label>
+            <input class="form-control" id="telefone" name="telefone" type="tel" inputmode="tel" autocomplete="tel" placeholder="(11) 91234-5678" data-regra="telefone" aria-describedby="telefone-erro">
+            <div class="pa-erro" id="telefone-erro" role="alert"></div>
+        </div>
+
+        <div class="pa-campo">
             <label class="form-label" for="email">E-mail</label>
             <input class="form-control" id="email" name="email" type="email" autocomplete="email" data-regra="email" aria-describedby="email-erro">
             <div class="pa-erro" id="email-erro" role="alert"></div>
@@ -148,6 +154,10 @@
     </form>
 </main>
 
+<script src="../../js/mock-data.js"></script>
+<script src="../../js/apiService.js"></script>
+<script src="../../js/comum.js"></script>
+<script type="module" src="../../js/authService.js"></script>
 <script src="../../js/auth-ui.js"></script>
 </body>
 </html>
