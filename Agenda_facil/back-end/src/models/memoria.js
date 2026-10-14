@@ -22,6 +22,7 @@ function dadosIniciais() {
 }
 dadosIniciais();
 
+const filas = new Map();   // filas de reserva por profissional (comTravaDoProfissional)
 const copia = (o) => (o === undefined ? undefined : JSON.parse(JSON.stringify(o)));
 
 module.exports = {
@@ -32,16 +33,17 @@ module.exports = {
     restaurar: async () => dadosIniciais(),
 
     /* ---------- usuários ---------- */
-    usuarioPorId: async (id) => copia(usuarios.find((u) => u.id === Number(id))),
-    usuarioPorFirebaseUid: async (uid) => copia(usuarios.find((u) => u.firebaseUid && u.firebaseUid === uid)),
+    // usuários desativados não entram (igual ao MySQL: "AND ativo = 1")
+    usuarioPorId: async (id) => copia(usuarios.find((u) => u.id === Number(id) && u.ativo)),
+    usuarioPorFirebaseUid: async (uid) => copia(usuarios.find((u) => u.firebaseUid && u.firebaseUid === uid && u.ativo)),
     usuarioPorEmail: async (email) => copia(usuarios.find((u) => u.email.toLowerCase() === String(email).toLowerCase())),
     // Cria a conta (e o local, se for profissional) de uma vez só
     criarConta: async ({ usuario, profissional }) => {
-        const novoUsuario = { id: proximoId.usuario++, ...usuario };
+        const novoUsuario = { id: proximoId.usuario++, ativo: true, ...usuario };
         usuarios.push(novoUsuario);
         let novoProfissional = null;
         if (profissional) {
-            novoProfissional = { id: proximoId.profissional++, usuarioId: novoUsuario.id, avaliacao: null, ativo: true, ...profissional };
+            novoProfissional = { id: proximoId.profissional++, usuarioId: novoUsuario.id, avaliacao: null, ativo: true, complemento: null, ...profissional };
             profissionais.push(novoProfissional);
         }
         return copia({ usuario: novoUsuario, profissional: novoProfissional });
@@ -66,6 +68,9 @@ module.exports = {
         Object.assign(s, campos);
         return copia(s);
     },
+
+    servicoTemAgendamentos: async (id) => agendamentos.some((a) => a.servicoId === Number(id)),
+    excluirServico: async (id) => { servicos = servicos.filter((s) => s.id !== Number(id)); },
 
     /* ---------- agenda semanal e bloqueios ---------- */
     horasDoDia: async (profissionalId, diaSemana) =>
@@ -97,18 +102,23 @@ module.exports = {
     },
 
     /* ---------- agendamentos ---------- */
-    // filtros opcionais: { usuarioId (cliente), profissionalId, status, data }
-    listarAgendamentos: async ({ usuarioId, profissionalId, status, data } = {}) =>
+    // filtros opcionais: { usuarioId (cliente), profissionalId, status, data, de, ate }  (de/ate: período, inclusive)
+    listarAgendamentos: async ({ usuarioId, profissionalId, status, data, de, ate } = {}) =>
         copia(agendamentos.filter((a) =>
             (!usuarioId || a.usuarioId === Number(usuarioId)) &&
             (!profissionalId || a.profissionalId === Number(profissionalId)) &&
             (!status || a.status === status) &&
-            (!data || a.data === data))),
+            (!data || a.data === data) &&
+            (!de || a.data >= de) &&
+            (!ate || a.data <= ate))),
     agendamentoPorId: async (id) => copia(agendamentos.find((a) => a.id === Number(id))),
-    // Há agendamento ATIVO (pendente/confirmado) neste horário? (o MySQL garante o mesmo com o UNIQUE)
-    horarioOcupado: async (profissionalId, data, hora, ignorarId) =>
-        agendamentos.some((a) => a.profissionalId === Number(profissionalId) && a.data === data && a.hora === hora
-            && ["PENDENTE", "CONFIRMADO"].includes(a.status) && a.id !== ignorarId),
+    // Executa "tarefa" sem que outra reserva do MESMO profissional rode ao mesmo tempo (fila por profissional)
+    comTravaDoProfissional: (profissionalId, tarefa) => {
+        const chave = Number(profissionalId);
+        const resultado = (filas.get(chave) || Promise.resolve()).then(tarefa);
+        filas.set(chave, resultado.catch(() => {}));
+        return resultado;
+    },
     criarAgendamento: async (dados) => {
         const novo = { id: proximoId.agendamento++, status: "PENDENTE", ...dados };
         agendamentos.push(novo);

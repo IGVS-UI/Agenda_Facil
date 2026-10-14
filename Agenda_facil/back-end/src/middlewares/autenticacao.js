@@ -58,7 +58,12 @@ async function identificar(req) {
 // Exige login e cadastro completo
 async function autenticar(req, res, next) {
     req.usuario = await identificar(req);
-    if (req.usuario) return next();
+    if (req.usuario) {
+        // Profissional sem o local cadastrado: sem profissionalId, os filtros "por dono" ficariam vazios
+        // e a pessoa enxergaria dados de outros profissionais. Trata como cadastro incompleto.
+        if (req.usuario.perfil === "profissional" && !req.usuario.profissionalId) throw cadastroIncompleto();
+        return next();
+    }
     if (req.tokenInfo) throw cadastroIncompleto();      // token válido, mas ainda sem cadastro no sistema
     throw naoAutenticado();
 }

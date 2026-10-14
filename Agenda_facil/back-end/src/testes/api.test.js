@@ -38,6 +38,29 @@ const dataEm = (dias) => { const d = new Date(); d.setDate(d.getDate() + dias); 
 // próxima data (a partir de amanhã) em que o João atende na quarta-feira (dia 3): horário 09:00 livre
 const proximaQuarta = () => { for (let i = 1; i < 15; i++) { const d = new Date(); d.setDate(d.getDate() + i); if (d.getDay() === 3) return dataEm(i); } };
 
+/* ---------- os dois modelos (memória e MySQL) devolvem os mesmos campos ---------- */
+
+test("modelo em uso devolve exatamente os mesmos campos do modelo em memória", async () => {
+    const memoria = require("../models/memoria");
+    await memoria.restaurar();
+    const campos = (o) => Object.keys(o).sort();
+    const pares = [
+        ["usuário", (m) => m.usuarioPorId(1)],
+        ["profissional", (m) => m.profissionalPorId(1)],
+        ["serviço", (m) => m.servicoPorId(1)],
+        ["agendamento", (m) => m.agendamentoPorId(1)]
+    ];
+    for (const [nome, buscar] of pares) {
+        assert.deepEqual(campos(await buscar(modelo)), campos(await buscar(memoria)), `campos de ${nome}`);
+    }
+});
+
+test("fuso horário da API é o de Brasília por padrão", () => {
+    const { fusoHorario } = require("../config/env");
+    assert.equal(fusoHorario, process.env.TZ);
+    assert.equal(Intl.DateTimeFormat().resolvedOptions().timeZone, process.env.TZ);
+});
+
 /* ---------- catálogo público ---------- */
 
 test("lista os serviços ativos, com 4 populares", async () => {
@@ -110,6 +133,77 @@ test("recusa serviço de outro profissional, horário bloqueado, passado e dados
     assert.equal((await chamar("POST", "/agendamentos", { usuario: IGOR, corpo: { servicoId: 1, profissionalId: 1, data: dataEm(-3), hora: "09:00" } })).status, 409);   // passado
     assert.equal((await chamar("POST", "/agendamentos", { usuario: IGOR, corpo: { servicoId: 1, profissionalId: 1, data: "ontem", hora: "09:00" } })).status, 400);
     assert.equal((await chamar("POST", "/agendamentos", { usuario: IGOR, corpo: {} })).status, 400);
+});
+
+/* ---------- duração do serviço no conflito de horário ---------- */
+
+async function criarServicoLongo() {
+    return (await chamar("POST", "/servicos", { usuario: JOAO, corpo: { nome: "Corte e barba", categoria: "Barbearia", descricao: "Combo.", duracaoMin: 90, preco: 70 } })).dados;
+}
+
+test("serviço de 90 min às 15:00 ocupa as 16:00", async () => {
+    const data = proximaQuarta();
+    const longo = await criarServicoLongo();
+    assert.equal((await chamar("POST", "/agendamentos", { usuario: IGOR, corpo: { servicoId: longo.id, profissionalId: 1, data, hora: "15:00" } })).status, 201);
+
+    const horarios = (await chamar("GET", `/horarios-disponiveis?profissionalId=1&data=${data}`)).dados;
+    assert.equal(horarios.find((h) => h.hora === "16:00").estado, "ocupado");
+    assert.equal((await chamar("POST", "/agendamentos", { usuario: ANA, corpo: { servicoId: 2, profissionalId: 1, data, hora: "16:00" } })).status, 409);
+});
+
+test("serviço de 90 min não cabe às 15:00 se já há alguém às 16:00; bloqueio também conta", async () => {
+    const data = proximaQuarta();
+    const longo = await criarServicoLongo();
+    assert.equal((await chamar("POST", "/agendamentos", { usuario: ANA, corpo: { servicoId: 2, profissionalId: 1, data, hora: "16:00" } })).status, 201);
+
+    const comServico = (await chamar("GET", `/horarios-disponiveis?profissionalId=1&data=${data}&servicoId=${longo.id}`)).dados;
+    assert.equal(comServico.find((h) => h.hora === "15:00").estado, "ocupado");          // 15:00-16:30 bate nas 16:00
+    const semServico = (await chamar("GET", `/horarios-disponiveis?profissionalId=1&data=${data}`)).dados;
+    assert.equal(semServico.find((h) => h.hora === "15:00").estado, "disponivel");      // 1 hora cabe
+    assert.equal((await chamar("POST", "/agendamentos", { usuario: IGOR, corpo: { servicoId: longo.id, profissionalId: 1, data, hora: "15:00" } })).status, 409);
+    assert.equal((await chamar("GET", `/horarios-disponiveis?profissionalId=1&data=${data}&servicoId=3`)).status, 400);   // serviço de outra profissional
+
+    // bloqueio às 15:00 impede começar um serviço de 90 min às 14:00 (sem o bloqueio, 14:00 caberia)
+    assert.equal((await chamar("GET", `/horarios-disponiveis?profissionalId=1&data=${data}&servicoId=${longo.id}`)).dados.find((h) => h.hora === "14:00").estado, "disponivel");
+    const agenda = (await chamar("GET", "/profissionais/1/disponibilidade", { usuario: JOAO })).dados;
+    await chamar("PUT", "/profissionais/1/disponibilidade", { usuario: JOAO, corpo: { disponibilidade: agenda.disponibilidade, bloqueios: [...agenda.bloqueios, { data, hora: "15:00" }] } });
+    assert.equal((await chamar("GET", `/horarios-disponiveis?profissionalId=1&data=${data}&servicoId=${longo.id}`)).dados.find((h) => h.hora === "14:00").estado, "indisponivel");
+    assert.equal((await chamar("POST", "/agendamentos", { usuario: IGOR, corpo: { servicoId: longo.id, profissionalId: 1, data, hora: "14:00" } })).status, 409);
+});
+
+test("reservas simultâneas que se sobrepõem: só uma entra", async () => {
+    const data = proximaQuarta();
+    const longo = await criarServicoLongo();
+    const r = await Promise.all([
+        chamar("POST", "/agendamentos", { usuario: IGOR, corpo: { servicoId: longo.id, profissionalId: 1, data, hora: "15:00" } }),
+        chamar("POST", "/agendamentos", { usuario: ANA, corpo: { servicoId: 2, profissionalId: 1, data, hora: "16:00" } })
+    ]);
+    assert.deepEqual(r.map((x) => x.status).sort(), [201, 409]);
+});
+
+/* ---------- limite de datas e filtro por período ---------- */
+
+test("não agenda além do limite de dias; os horários aparecem indisponíveis", async () => {
+    const { limiteDiasAgendamento } = require("../config/env");
+    const longe = new Date(); longe.setDate(longe.getDate() + limiteDiasAgendamento + 7);
+    while (longe.getDay() !== 3) longe.setDate(longe.getDate() + 1);       // uma quarta (dia em que o João atende)
+    const data = `${longe.getFullYear()}-${pad(longe.getMonth() + 1)}-${pad(longe.getDate())}`;
+    const r = await chamar("POST", "/agendamentos", { usuario: IGOR, corpo: { servicoId: 1, profissionalId: 1, data, hora: "09:00" } });
+    assert.equal(r.status, 400);
+    assert.match(r.dados.mensagem, /dias à frente/);
+    const horarios = (await chamar("GET", `/horarios-disponiveis?profissionalId=1&data=${data}`)).dados;
+    assert.ok(horarios.length > 0 && horarios.every((h) => h.estado === "indisponivel"));
+    assert.equal((await chamar("POST", "/agendamentos", { usuario: IGOR, corpo: { servicoId: 1, profissionalId: 1, data: "9999-12-31", hora: "09:00" } })).status, 400);
+});
+
+test("filtro por período (de/ate) na lista de agendamentos", async () => {
+    const semana = (await chamar("GET", `/agendamentos?de=${dataEm(0)}&ate=${dataEm(6)}`, { usuario: JOAO })).dados;
+    assert.ok(semana.length > 0 && semana.every((a) => a.data >= dataEm(0) && a.data <= dataEm(6) && a.profissionalId === 1));
+    const tudo = (await chamar("GET", "/agendamentos", { usuario: JOAO })).dados;
+    assert.ok(tudo.some((a) => a.data < dataEm(0)));                      // o passado ficou fora do período
+    assert.equal((await chamar("GET", `/agendamentos?de=${dataEm(6)}&ate=${dataEm(0)}`, { usuario: JOAO })).status, 400);
+    assert.equal((await chamar("GET", `/agendamentos?data=${dataEm(0)}&de=${dataEm(0)}`, { usuario: JOAO })).status, 400);
+    assert.equal((await chamar("GET", "/agendamentos?de=ontem", { usuario: JOAO })).status, 400);
 });
 
 /* ---------- quem vê o quê ---------- */
@@ -186,6 +280,18 @@ test("profissional cria, edita e desativa os próprios serviços; os outros não
     assert.equal((await chamar("POST", "/agendamentos", { usuario: IGOR, corpo: { servicoId: id, profissionalId: 1, data: proximaQuarta(), hora: "09:00" } })).status, 404);
 });
 
+test("excluir serviço: só o dono, e só se nunca foi agendado", async () => {
+    const novo = (await chamar("POST", "/servicos", { usuario: JOAO, corpo: { nome: "Teste", categoria: "X", descricao: "x", duracaoMin: 30, preco: 10 } })).dados;
+    assert.equal((await chamar("DELETE", `/servicos/${novo.id}`, { usuario: MARINA })).status, 403);
+    assert.equal((await chamar("DELETE", `/servicos/${novo.id}`, { usuario: IGOR })).status, 403);
+    assert.equal((await chamar("DELETE", `/servicos/${novo.id}`, { usuario: JOAO })).status, 204);
+    assert.ok(!(await chamar("GET", "/servicos?apenasAtivos=false", { usuario: JOAO })).dados.some((s) => s.id === novo.id));
+    assert.equal((await chamar("DELETE", `/servicos/${novo.id}`, { usuario: JOAO })).status, 404);
+    const comHistorico = await chamar("DELETE", "/servicos/1", { usuario: JOAO });        // Corte tem agendamentos
+    assert.equal(comHistorico.status, 409);
+    assert.ok((await chamar("GET", "/servicos")).dados.some((s) => s.id === 1));
+});
+
 /* ---------- disponibilidade ---------- */
 
 test("só o dono lê e altera a própria agenda; bloqueio some para o cliente", async () => {
@@ -219,6 +325,34 @@ test("/me, rota inexistente e JSON inválido", async () => {
     assert.equal(ruim.status, 400);
 });
 
+/* ---------- segurança: configuração ---------- */
+
+test("login fake nunca sobe em produção; configurações inválidas são recusadas", () => {
+    const { validarConfiguracao } = require("../config/env");
+    const base = { ambiente: "development", corsOrigem: "*", authModo: "fake", dadosModo: "memoria", firebase: { projectId: "" } };
+    assert.equal(validarConfiguracao(base).erros.length, 0);
+    assert.equal(validarConfiguracao(base).avisos.length, 1);                                            // avisa em desenvolvimento
+    assert.equal(validarConfiguracao({ ...base, ambiente: "production" }).erros.length, 1);              // produção + fake: não sobe
+    assert.equal(validarConfiguracao({ ...base, authModo: "qualquer" }).erros.length, 1);
+    assert.equal(validarConfiguracao({ ...base, authModo: "firebase" }).erros.length, 1);                // firebase sem projectId
+    const producaoOk = validarConfiguracao({ ...base, ambiente: "production", authModo: "firebase", corsOrigem: "https://agendafacil.com", firebase: { projectId: "p" } });
+    assert.deepEqual(producaoOk, { erros: [], avisos: [] });
+});
+
+/* ---------- segurança: profissional sem local não enxerga dados de ninguém ---------- */
+
+test("profissional sem o local cadastrado não vê agendamentos nem serviços de outros", async () => {
+    const { usuario } = await modelo.criarConta({
+        usuario: { firebaseUid: "uid-sem-local", nome: "Sem Local", email: "semlocal@exemplo.com", telefone: "1", tipo: "profissional" },
+        profissional: null
+    });
+    const agendamentos = await chamar("GET", "/agendamentos", { usuario: usuario.id });
+    assert.equal(agendamentos.status, 403);
+    assert.equal(agendamentos.dados.codigo, "CADASTRO_INCOMPLETO");
+    assert.equal((await chamar("GET", "/servicos?apenasAtivos=false", { usuario: usuario.id })).status, 403);
+    assert.equal((await chamar("GET", "/me", { usuario: usuario.id })).dados.codigo, "CADASTRO_INCOMPLETO");
+});
+
 /* ---------- cadastro (Firebase) ---------- */
 
 const ENDERECO = { especialidade: "Barbearia", nomeLocal: "Barbearia Nova", cep: "01310-100", logradouro: "Av. Paulista", numero: "1000", bairro: "Bela Vista", cidade: "São Paulo", uf: "SP" };
@@ -240,7 +374,9 @@ test("cadastro de cliente: token sem conta -> CADASTRO_INCOMPLETO; depois de cad
     assert.equal(depois.dados.nome, "Ana Nova");
     assert.equal((await modelo.usuarioPorId(depois.dados.id)).email, "ana.nova@exemplo.com");     // o e-mail vem do token, não do corpo
 
-    assert.equal((await chamar("POST", "/usuarios", { token, corpo: { perfil: "cliente", nome: "Ana Nova" } })).status, 409);   // já cadastrada
+    const repetido = await chamar("POST", "/usuarios", { token, corpo: { perfil: "cliente", nome: "Ana Nova" } });     // já cadastrada
+    assert.equal(repetido.status, 409);
+    assert.match(repetido.dados.mensagem, /já está cadastrada/);
     // a nova cliente já consegue agendar
     const data = proximaQuarta();
     assert.equal((await chamar("POST", "/agendamentos", { token, corpo: { servicoId: 1, profissionalId: 1, data, hora: "09:00" } })).status, 201);

@@ -44,7 +44,9 @@ function validarProfissional(dados, telefone) {
 }
 
 // POST /api/usuarios   { perfil, nome, telefone, profissional?: { ... } }
-async function criar(tokenInfo, corpo) {
+// "jaCadastrado": a conta que a autenticação já encontrou para este token (se houver)
+async function criar(tokenInfo, corpo, jaCadastrado) {
+    if (jaCadastrado) throw conflito("Esta conta já está cadastrada. Entre para continuar.");
     if (!tokenInfo.email) throw requisicaoInvalida("A conta do Firebase precisa ter um e-mail.");
     if (corpo.perfil !== "cliente" && corpo.perfil !== "profissional") throw requisicaoInvalida('Escolha o perfil: "cliente" ou "profissional".');
 

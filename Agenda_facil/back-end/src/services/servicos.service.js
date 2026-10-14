@@ -3,7 +3,7 @@
  * e vê os desativados dele.
  */
 const modelo = require("../models");
-const { requisicaoInvalida, naoEncontrado, proibido } = require("../middlewares/erros");
+const { requisicaoInvalida, naoEncontrado, proibido, conflito } = require("../middlewares/erros");
 
 const POPULARES = 4;
 
@@ -59,7 +59,7 @@ async function listar(usuario, { apenasAtivos, profissionalId }) {
     let filtroProfissional = profissionalId;
     if (!soAtivos) {
         // ver os desativados é só do dono
-        if (!usuario || usuario.perfil !== "profissional") throw proibido("Só o profissional vê os serviços desativados.");
+        if (!usuario || usuario.perfil !== "profissional" || !usuario.profissionalId) throw proibido("Só o profissional vê os serviços desativados.");
         if (profissionalId && Number(profissionalId) !== usuario.profissionalId) throw proibido("Você só vê os seus serviços.");
         filtroProfissional = usuario.profissionalId;
     }
@@ -83,4 +83,16 @@ async function atualizar(usuario, id, corpo) {
     return formatar(atualizado, await idsPopulares());
 }
 
-module.exports = { listar, criar, atualizar, formatar, idsPopulares };
+// DELETE /api/servicos/:id  Só exclui serviço que nunca foi agendado: o histórico de agendamentos
+// precisa continuar mostrando o serviço. Os demais são desativados (PUT com { ativo: false }).
+async function excluir(usuario, id) {
+    const servico = await modelo.servicoPorId(id);
+    if (!servico) throw naoEncontrado("Serviço não encontrado.");
+    if (servico.profissionalId !== usuario.profissionalId) throw proibido("Este serviço não é seu.");
+    if (await modelo.servicoTemAgendamentos(servico.id)) {
+        throw conflito("Este serviço já tem agendamentos e não pode ser excluído. Desative-o para que não apareça mais aos clientes.");
+    }
+    await modelo.excluirServico(servico.id);
+}
+
+module.exports = { listar, criar, atualizar, excluir, formatar, idsPopulares };
