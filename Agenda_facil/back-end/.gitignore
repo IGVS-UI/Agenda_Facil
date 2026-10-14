@@ -1,2 +1,8 @@
 node_modules/
 .env
+
+# Chaves de serviço do Firebase (dão acesso total ao projeto: NUNCA versionar)
+*firebase-adminsdk*.json
+serviceAccount*.json
+chave-firebase*.json
+credenciais/

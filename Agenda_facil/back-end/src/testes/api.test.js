@@ -18,10 +18,15 @@ after(async () => { servidor.close(); await modelo.encerrar(); });
 beforeEach(() => modelo.restaurar());
 
 const IGOR = 1, ANA = 2, JOAO = 6, MARINA = 7;
-async function chamar(metodo, caminho, { usuario, corpo } = {}) {
+// usuario: id do banco (X-Usuario-Id). token: "teste:<uid>:<email>:<nome>" (alguém recém-criado no Firebase)
+async function chamar(metodo, caminho, { usuario, token, corpo } = {}) {
     const resposta = await fetch(base + caminho, {
         method: metodo,
-        headers: { "Content-Type": "application/json", ...(usuario ? { "X-Usuario-Id": String(usuario) } : {}) },
+        headers: {
+            "Content-Type": "application/json",
+            ...(usuario ? { "X-Usuario-Id": String(usuario) } : {}),
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
         body: corpo ? JSON.stringify(corpo) : undefined
     });
     const texto = await resposta.text();
@@ -212,4 +217,72 @@ test("/me, rota inexistente e JSON inválido", async () => {
     assert.equal((await chamar("GET", "/nao-existe")).status, 404);
     const ruim = await fetch(`${base}/agendamentos`, { method: "POST", headers: { "Content-Type": "application/json", "X-Usuario-Id": "1" }, body: "{quebrado" });
     assert.equal(ruim.status, 400);
+});
+
+/* ---------- cadastro (Firebase) ---------- */
+
+const ENDERECO = { especialidade: "Barbearia", nomeLocal: "Barbearia Nova", cep: "01310-100", logradouro: "Av. Paulista", numero: "1000", bairro: "Bela Vista", cidade: "São Paulo", uf: "SP" };
+
+test("cadastro de cliente: token sem conta -> CADASTRO_INCOMPLETO; depois de cadastrar, entra normalmente", async () => {
+    const token = "teste:uid-ana-nova:ana.nova@exemplo.com:Ana Nova";
+    assert.equal((await chamar("POST", "/usuarios", { corpo: { perfil: "cliente", nome: "Ana Nova" } })).status, 401);        // sem token
+
+    const antes = await chamar("GET", "/me", { token });
+    assert.equal(antes.status, 403);
+    assert.equal(antes.dados.codigo, "CADASTRO_INCOMPLETO");
+
+    const criado = await chamar("POST", "/usuarios", { token, corpo: { perfil: "cliente", nome: "Ana Nova", telefone: "(11) 90000-1111", email: "outro@hacker.com" } });
+    assert.equal(criado.status, 201);
+    assert.equal(criado.dados.perfil, "cliente");
+
+    const depois = await chamar("GET", "/me", { token });
+    assert.equal(depois.status, 200);
+    assert.equal(depois.dados.nome, "Ana Nova");
+    assert.equal((await modelo.usuarioPorId(depois.dados.id)).email, "ana.nova@exemplo.com");     // o e-mail vem do token, não do corpo
+
+    assert.equal((await chamar("POST", "/usuarios", { token, corpo: { perfil: "cliente", nome: "Ana Nova" } })).status, 409);   // já cadastrada
+    // a nova cliente já consegue agendar
+    const data = proximaQuarta();
+    assert.equal((await chamar("POST", "/agendamentos", { token, corpo: { servicoId: 1, profissionalId: 1, data, hora: "09:00" } })).status, 201);
+});
+
+test("cadastro recusa perfil/dados inválidos e e-mail já usado", async () => {
+    const token = "teste:uid-x:x@exemplo.com:X";
+    assert.equal((await chamar("POST", "/usuarios", { token, corpo: { perfil: "admin", nome: "X" } })).status, 400);
+    assert.equal((await chamar("POST", "/usuarios", { token, corpo: { perfil: "cliente" } })).status, 400);                        // sem nome
+    assert.equal((await chamar("POST", "/usuarios", { token, corpo: { perfil: "profissional", nome: "X", telefone: "1" } })).status, 400);   // sem dados do local
+    assert.equal((await chamar("POST", "/usuarios", { token, corpo: { perfil: "profissional", nome: "X", telefone: "1", profissional: { ...ENDERECO, cep: "123" } } })).status, 400);
+    assert.equal((await chamar("POST", "/usuarios", { token, corpo: { perfil: "profissional", nome: "X", telefone: "1", profissional: { ...ENDERECO, uf: "ZZ" } } })).status, 400);
+    // e-mail do Igor (já existe no banco) com outro uid do Firebase
+    assert.equal((await chamar("POST", "/usuarios", { token: "teste:uid-y:igor@exemplo.com:Outro", corpo: { perfil: "cliente", nome: "Outro" } })).status, 409);
+    assert.equal((await chamar("GET", "/me", { token })).dados.codigo, "CADASTRO_INCOMPLETO");                                      // nada foi criado
+});
+
+test("cadastro de profissional: cria o local, entra como profissional e já pode criar serviços", async () => {
+    const token = "teste:uid-pedro-prof:pedro.prof@exemplo.com:Pedro Prof";
+    const criado = await chamar("POST", "/usuarios", { token, corpo: { perfil: "profissional", nome: "Pedro Prof", telefone: "(11) 95555-0000", profissional: ENDERECO } });
+    assert.equal(criado.status, 201);
+    assert.equal(criado.dados.perfil, "profissional");
+    assert.ok(criado.dados.profissionalId);
+
+    const eu = (await chamar("GET", "/me", { token })).dados;
+    assert.equal(eu.profissionalId, criado.dados.profissionalId);
+
+    const servico = await chamar("POST", "/servicos", { token, corpo: { nome: "Corte", categoria: "Barbearia", descricao: "Corte simples.", duracaoMin: 30, preco: 40 } });
+    assert.equal(servico.status, 201);
+    assert.equal(servico.dados.profissionalId, eu.profissionalId);
+
+    // aparece na lista de locais, mas sem distância (ainda sem coordenadas), por último
+    const locais = (await chamar("GET", "/profissionais?origem=centro")).dados;
+    const novo = locais[locais.length - 1];
+    assert.equal(novo.local, "Barbearia Nova");
+    assert.equal(novo.distanciaKm, null);
+    assert.ok(locais.slice(0, -1).every((p) => typeof p.distanciaKm === "number"));
+    // um cliente não consegue virar profissional por conta própria: o perfil só é gravado no cadastro
+    assert.equal((await chamar("POST", "/servicos", { usuario: IGOR, corpo: { nome: "x", categoria: "x", descricao: "x", duracaoMin: 30, preco: 1 } })).status, 403);
+});
+
+test("token inválido não derruba o catálogo público", async () => {
+    assert.equal((await chamar("GET", "/servicos", { token: "lixo" })).status, 200);
+    assert.equal((await chamar("GET", "/me", { token: "lixo" })).status, 401);
 });

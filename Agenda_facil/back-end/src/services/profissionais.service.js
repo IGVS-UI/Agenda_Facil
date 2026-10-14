@@ -57,13 +57,18 @@ async function listar({ servicoId, ...localizacao }) {
             nome: usuario.nome,
             local: p.nomeLocal,
             endereco: `${p.logradouro}, ${p.numero} - ${p.bairro}`,
-            distanciaKm: posicao ? Math.round(distanciaKm(posicao.latitude, posicao.longitude, p.latitude, p.longitude) * 10) / 10 : null,
+            distanciaKm: posicao && p.latitude != null && p.longitude != null
+                ? Math.round(distanciaKm(posicao.latitude, posicao.longitude, p.latitude, p.longitude) * 10) / 10 : null,
             avaliacao: p.avaliacao,
             servicosIds
         });
     }
-    // Mais próximo primeiro; sem posição informada, ordem alfabética do local
-    return lista.sort((a, b) => (posicao ? a.distanciaKm - b.distanciaKm : a.local.localeCompare(b.local)));
+    // Mais próximo primeiro (quem ainda não tem coordenadas vem por último); sem posição, ordem alfabética
+    const semDistancia = (p) => p.distanciaKm === null;
+    return lista.sort((a, b) => {
+        if (posicao && semDistancia(a) !== semDistancia(b)) return semDistancia(a) ? 1 : -1;
+        return posicao && !semDistancia(a) ? a.distanciaKm - b.distanciaKm : a.local.localeCompare(b.local);
+    });
 }
 
 module.exports = { listar, listarOrigens, distanciaKm };

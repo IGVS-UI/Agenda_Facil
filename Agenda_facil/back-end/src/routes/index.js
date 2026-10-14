@@ -4,7 +4,7 @@
  * Legenda de acesso:  público = qualquer um | logado = qualquer perfil | cliente / profissional = só o perfil
  */
 const { Router } = require("express");
-const { autenticar, autenticarOpcional, exigirPerfil } = require("../middlewares/autenticacao");
+const { autenticar, autenticarToken, autenticarOpcional, exigirPerfil } = require("../middlewares/autenticacao");
 const servicos = require("../controllers/servicos.controller");
 const profissionais = require("../controllers/profissionais.controller");
 const agendamentos = require("../controllers/agendamentos.controller");
@@ -17,7 +17,10 @@ const profissional = exigirPerfil("profissional");
 rotas.get("/saude", (req, res) => res.json({ ok: true }));
 
 // Quem sou eu                                                         logado
-rotas.get("/me", autenticar, usuarios.eu);
+rotas.get("/me", autenticar, usuarios.eu);                             // 403 CADASTRO_INCOMPLETO: tem token, mas ainda sem cadastro
+
+// Cadastro (cria a conta no sistema)                                  token do Firebase, sem cadastro ainda
+rotas.post("/usuarios", autenticarToken, usuarios.cadastrar);
 
 // Catálogo                                                            público
 rotas.get("/servicos", autenticarOpcional, servicos.listar);           // (desativados: só o dono)

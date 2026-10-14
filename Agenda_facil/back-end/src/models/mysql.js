@@ -32,7 +32,7 @@ const hora = (coluna) => `TIME_FORMAT(${coluna}, '%H:%i')`;               // col
 const horaSql = (texto) => `${texto}:00`;                               // "09:00" -> "09:00:00"
 const maisUmaHora = (texto) => `${String(Number(texto.slice(0, 2)) + 1).padStart(2, "0")}:${texto.slice(3, 5)}:00`;
 
-const comoUsuario = (l) => l && { id: l.id_usuario, nome: l.nome, email: l.email, telefone: l.telefone, tipo: l.tipo };
+const comoUsuario = (l) => l && { id: l.id_usuario, firebaseUid: l.firebase_uid, nome: l.nome, email: l.email, telefone: l.telefone, tipo: l.tipo };
 const comoProfissional = (l) => l && {
     id: l.id_profissional, usuarioId: l.usuario_id, nomeLocal: l.nome_local, logradouro: l.logradouro, numero: l.numero,
     bairro: l.bairro, cidade: l.cidade, uf: l.uf, latitude: l.latitude, longitude: l.longitude,
@@ -54,6 +54,36 @@ const COLUNAS_AGENDAMENTO = `id_agendamento, usuario_id, servico_id, profissiona
 module.exports = {
     /* ---------- usuários ---------- */
     usuarioPorId: async (id) => comoUsuario(await primeira("SELECT * FROM usuario WHERE id_usuario = ? AND ativo = 1", [Number(id)])),
+    usuarioPorFirebaseUid: async (uid) => comoUsuario(await primeira("SELECT * FROM usuario WHERE firebase_uid = ? AND ativo = 1", [uid])),
+    usuarioPorEmail: async (email) => comoUsuario(await primeira("SELECT * FROM usuario WHERE email = ?", [String(email)])),
+    // Cria a conta (e o local, se for profissional) numa transação: ou grava os dois, ou nenhum
+    criarConta: async ({ usuario, profissional }) => {
+        const conexao = await conexoes().getConnection();
+        try {
+            await conexao.beginTransaction();
+            const [ru] = await conexao.execute("INSERT INTO usuario (firebase_uid, nome, email, telefone, tipo) VALUES (?, ?, ?, ?, ?)",
+                [usuario.firebaseUid, usuario.nome, usuario.email, usuario.telefone ?? null, usuario.tipo]);
+            let idProfissional = null;
+            if (profissional) {
+                const [rp] = await conexao.execute(
+                    `INSERT INTO profissional (usuario_id, nome_local, especialidade, celular, cep, logradouro, numero, complemento, bairro, cidade, uf, latitude, longitude)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                    [ru.insertId, profissional.nomeLocal, profissional.especialidade, profissional.celular, profissional.cep, profissional.logradouro,
+                        profissional.numero, profissional.complemento ?? null, profissional.bairro, profissional.cidade, profissional.uf,
+                        profissional.latitude ?? null, profissional.longitude ?? null]);
+                idProfissional = rp.insertId;
+            }
+            await conexao.commit();
+            const [u] = await conexao.execute("SELECT * FROM usuario WHERE id_usuario = ?", [ru.insertId]);
+            const p = idProfissional ? (await conexao.execute("SELECT * FROM profissional WHERE id_profissional = ?", [idProfissional]))[0][0] : null;
+            return { usuario: comoUsuario(u[0]), profissional: comoProfissional(p) };
+        } catch (erro) {
+            await conexao.rollback();
+            throw erro;
+        } finally {
+            conexao.release();
+        }
+    },
 
     /* ---------- profissionais ---------- */
     listarProfissionais: async () => (await consultar("SELECT * FROM profissional WHERE ativo = 1 ORDER BY id_profissional")).map(comoProfissional),

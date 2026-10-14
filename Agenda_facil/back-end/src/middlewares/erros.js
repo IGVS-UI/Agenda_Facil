@@ -3,9 +3,11 @@
  * transforma em resposta JSON { mensagem } com o código HTTP certo.
  */
 class ErroApi extends Error {
-    constructor(status, mensagem) {
+    // "codigo" é opcional: um texto curto que o front-end pode testar (ex.: CADASTRO_INCOMPLETO)
+    constructor(status, mensagem, codigo) {
         super(mensagem);
         this.status = status;
+        this.codigo = codigo;
     }
 }
 
@@ -14,6 +16,8 @@ const proibido = (mensagem = "Você não tem permissão para fazer isto.") => ne
 const naoEncontrado = (mensagem = "Não encontrado.") => new ErroApi(404, mensagem);
 const requisicaoInvalida = (mensagem) => new ErroApi(400, mensagem);
 const conflito = (mensagem) => new ErroApi(409, mensagem);
+// Token do Firebase válido, mas a pessoa ainda não tem cadastro no sistema (ex.: primeiro login com Google)
+const cadastroIncompleto = () => new ErroApi(403, "Conclua o seu cadastro para continuar.", "CADASTRO_INCOMPLETO");
 
 function rotaNaoEncontrada(req, res, next) {
     next(naoEncontrado(`Rota não encontrada: ${req.method} ${req.originalUrl}`));
@@ -22,10 +26,10 @@ function rotaNaoEncontrada(req, res, next) {
 // Precisa ter 4 parâmetros para o Express reconhecer como tratador de erros
 // eslint-disable-next-line no-unused-vars
 function tratarErros(erro, req, res, next) {
-    if (erro instanceof ErroApi) return res.status(erro.status).json({ mensagem: erro.message });
+    if (erro instanceof ErroApi) return res.status(erro.status).json({ mensagem: erro.message, ...(erro.codigo ? { codigo: erro.codigo } : {}) });
     if (erro instanceof SyntaxError && erro.status === 400) return res.status(400).json({ mensagem: "JSON inválido no corpo da requisição." });
     console.error(erro);
     res.status(500).json({ mensagem: "Erro interno do servidor." });
 }
 
-module.exports = { ErroApi, naoAutenticado, proibido, naoEncontrado, requisicaoInvalida, conflito, rotaNaoEncontrada, tratarErros };
+module.exports = { ErroApi, naoAutenticado, proibido, naoEncontrado, requisicaoInvalida, conflito, cadastroIncompleto, rotaNaoEncontrada, tratarErros };

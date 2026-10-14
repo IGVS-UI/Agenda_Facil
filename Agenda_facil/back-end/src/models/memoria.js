@@ -15,7 +15,10 @@ let usuarios, profissionais, servicos, disponibilidadeSemanal, bloqueios, agenda
 
 function dadosIniciais() {
     ({ usuarios, profissionais, servicos, disponibilidadeSemanal, bloqueios, agendamentos } = gerar());
-    proximoId = { servico: Math.max(...servicos.map((x) => x.id)) + 1, agendamento: Math.max(...agendamentos.map((x) => x.id)) + 1 };
+    proximoId = {
+        usuario: Math.max(...usuarios.map((x) => x.id)) + 1, profissional: Math.max(...profissionais.map((x) => x.id)) + 1,
+        servico: Math.max(...servicos.map((x) => x.id)) + 1, agendamento: Math.max(...agendamentos.map((x) => x.id)) + 1
+    };
 }
 dadosIniciais();
 
@@ -30,6 +33,19 @@ module.exports = {
 
     /* ---------- usuários ---------- */
     usuarioPorId: async (id) => copia(usuarios.find((u) => u.id === Number(id))),
+    usuarioPorFirebaseUid: async (uid) => copia(usuarios.find((u) => u.firebaseUid && u.firebaseUid === uid)),
+    usuarioPorEmail: async (email) => copia(usuarios.find((u) => u.email.toLowerCase() === String(email).toLowerCase())),
+    // Cria a conta (e o local, se for profissional) de uma vez só
+    criarConta: async ({ usuario, profissional }) => {
+        const novoUsuario = { id: proximoId.usuario++, ...usuario };
+        usuarios.push(novoUsuario);
+        let novoProfissional = null;
+        if (profissional) {
+            novoProfissional = { id: proximoId.profissional++, usuarioId: novoUsuario.id, avaliacao: null, ativo: true, ...profissional };
+            profissionais.push(novoProfissional);
+        }
+        return copia({ usuario: novoUsuario, profissional: novoProfissional });
+    },
 
     /* ---------- profissionais ---------- */
     listarProfissionais: async () => copia(profissionais.filter((p) => p.ativo)),

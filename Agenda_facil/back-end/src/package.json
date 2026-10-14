@@ -11,11 +11,13 @@
   "scripts": {
     "start": "node --env-file-if-exists=.env server.js",
     "dev": "node --watch --env-file-if-exists=.env server.js",
-    "test": "node --test testes/api.test.js"
+    "test": "node --test testes/api.test.js",
+    "verificar": "node --env-file-if-exists=.env scripts/verificar-banco.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^5.1.0",
+    "firebase-admin": "^14.5.0",
     "mysql2": "^3.24.6"
   }
 }
