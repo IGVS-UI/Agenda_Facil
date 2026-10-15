@@ -2,8 +2,7 @@
 -- Agenda Fácil — criação do banco de dados do zero (MySQL 8.0)
 --
 -- Use este script quando o banco AINDA NÃO EXISTE (só o modelo .mwb).
--- Ele cria o banco já no formato final, sem passar pelo "ajustes_banco.sql".
--- (Se você já tem o banco antigo com dados, use o ajustes_banco.sql.)
+-- Ele cria o banco já no formato final (agenda semanal + bloqueios, login pelo Firebase).
 --
 -- Execute uma vez, no MySQL Workbench (conectado ao servidor):
 --   File > Open SQL Script > escolher este arquivo > raio amarelo (executar tudo).

@@ -39,11 +39,11 @@ async function verificar() {
     // As travas mais importantes do banco
     const [indices] = await conexao.query("SHOW INDEX FROM agendamento WHERE Key_name = 'uq_agendamento_horario_ativo'").catch(() => [[]]);
     if (indices.length) ok("Trava contra horário duplicado (uq_agendamento_horario_ativo)");
-    else falha("Trava contra horário duplicado", "A tabela agendamento parece estar no formato antigo: use o criar_banco.sql (ou o ajustes_banco.sql).");
+    else falha("Trava contra horário duplicado", "A tabela agendamento parece estar no formato antigo: recrie o banco com o criar_banco.sql.");
 
     const [colunas] = await conexao.query("SHOW COLUMNS FROM usuario LIKE 'firebase_uid'").catch(() => [[]]);
     if (colunas.length) ok("Coluna usuario.firebase_uid (login pelo Firebase)");
-    else falha("Coluna usuario.firebase_uid", "Rode o ajustes_banco.sql ou recrie o banco com o criar_banco.sql.");
+    else falha("Coluna usuario.firebase_uid", "Recrie o banco com o criar_banco.sql.");
 
     await conexao.end();
 }
