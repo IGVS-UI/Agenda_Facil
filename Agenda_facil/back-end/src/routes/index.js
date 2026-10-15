@@ -26,18 +26,20 @@ rotas.post("/usuarios", autenticarToken, usuarios.cadastrar);
 rotas.get("/servicos", autenticarOpcional, servicos.listar);           // (desativados: só o dono)
 rotas.get("/profissionais", profissionais.listar);
 rotas.get("/origens", profissionais.listarOrigens);                    // localizações de exemplo (testes sem GPS)
+rotas.get("/localizacao", profissionais.localizacaoDoCep);             // ?cep= -> latitude/longitude aproximadas
 rotas.get("/horarios-disponiveis", profissionais.horariosDisponiveis);
 
 // Serviços do profissional                                            profissional
 rotas.post("/servicos", autenticar, profissional, servicos.criar);
 rotas.put("/servicos/:id", autenticar, profissional, servicos.atualizar);
+rotas.delete("/servicos/:id", autenticar, profissional, servicos.excluir);         // só serviço sem agendamentos
 
 // Agenda do profissional                                              profissional
 rotas.get("/profissionais/:id/disponibilidade", autenticar, profissional, profissionais.obterDisponibilidade);
 rotas.put("/profissionais/:id/disponibilidade", autenticar, profissional, profissionais.salvarDisponibilidade);
 
 // Agendamentos                                                        listar/status: logado; criar/reagendar/excluir: cliente
-rotas.get("/agendamentos", autenticar, agendamentos.listar);
+rotas.get("/agendamentos", autenticar, agendamentos.listar);                   // ?status= &data= ou &de= &ate=
 rotas.post("/agendamentos", autenticar, cliente, agendamentos.criar);
 rotas.put("/agendamentos/:id", autenticar, cliente, agendamentos.reagendar);
 rotas.patch("/agendamentos/:id/status", autenticar, agendamentos.alterarStatus);

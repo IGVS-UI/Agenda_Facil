@@ -18,6 +18,11 @@ const requisicaoInvalida = (mensagem) => new ErroApi(400, mensagem);
 const conflito = (mensagem) => new ErroApi(409, mensagem);
 // Token do Firebase válido, mas a pessoa ainda não tem cadastro no sistema (ex.: primeiro login com Google)
 const cadastroIncompleto = () => new ErroApi(403, "Conclua o seu cadastro para continuar.", "CADASTRO_INCOMPLETO");
+// O e-mail do token já tem cadastro no sistema, mas ligado a OUTRO login do Firebase (ex.: a conta foi apagada
+// no console e criada de novo). Só religa depois que o Firebase confirmar que a pessoa é dona do e-mail.
+const emailJaCadastrado = () => new ErroApi(409,
+    "Este e-mail já tem um cadastro no Agenda Fácil, ligado a outro login. Confirme o e-mail para usar este login no seu cadastro.",
+    "EMAIL_JA_CADASTRADO");
 
 function rotaNaoEncontrada(req, res, next) {
     next(naoEncontrado(`Rota não encontrada: ${req.method} ${req.originalUrl}`));
@@ -32,4 +37,4 @@ function tratarErros(erro, req, res, next) {
     res.status(500).json({ mensagem: "Erro interno do servidor." });
 }
 
-module.exports = { ErroApi, naoAutenticado, proibido, naoEncontrado, requisicaoInvalida, conflito, cadastroIncompleto, rotaNaoEncontrada, tratarErros };
+module.exports = { ErroApi, naoAutenticado, proibido, naoEncontrado, requisicaoInvalida, conflito, cadastroIncompleto, emailJaCadastrado, rotaNaoEncontrada, tratarErros };

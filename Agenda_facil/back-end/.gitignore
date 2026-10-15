@@ -1,5 +1,9 @@
 node_modules/
+
+# Arquivos de ambiente (senhas): qualquer .env, menos o modelo .env.example
 .env
+.env.*
+!.env.example
 
 # Chaves de serviço do Firebase (dão acesso total ao projeto: NUNCA versionar)
 *firebase-adminsdk*.json

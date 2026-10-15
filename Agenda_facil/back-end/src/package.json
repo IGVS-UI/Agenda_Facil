@@ -12,7 +12,8 @@
     "start": "node --env-file-if-exists=.env server.js",
     "dev": "node --watch --env-file-if-exists=.env server.js",
     "test": "node --test testes/api.test.js",
-    "verificar": "node --env-file-if-exists=.env scripts/verificar-banco.js"
+    "verificar": "node --env-file-if-exists=.env scripts/verificar-banco.js",
+    "geocodificar": "node --env-file-if-exists=.env scripts/geocodificar-profissionais.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

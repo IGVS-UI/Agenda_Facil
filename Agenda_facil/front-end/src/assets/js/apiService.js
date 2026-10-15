@@ -30,7 +30,7 @@ function escolherModo() {
 const API_MODO = escolherModo();               // "mock" | "http"
 const API_URL = "http://localhost:3000/api";   // usado só no modo "http"
 
-const CHAVE_STORAGE = "agendaFacil:dados:v2";
+const CHAVE_STORAGE = "agendaFacil:dados:v3";   // v3: profissionais com latitude/longitude
 
 // Status em que o horário continua ocupado
 const STATUS_OCUPAM_HORARIO = ["PENDENTE", "CONFIRMADO"];
@@ -84,24 +84,35 @@ function horarioJaPassou(data, hora) {
 }
 
 /*
- * Estado de um horário:
+ * Estado de um horário (mesma regra da API):
  *   "disponivel"   - pode ser escolhido
- *   "ocupado"      - já existe agendamento pendente/confirmado
+ *   "ocupado"      - o tempo do serviço se sobrepõe a um agendamento pendente/confirmado
  *   "indisponivel" - bloqueado pelo profissional ou já passou
+ * Compara intervalos: um serviço de 90 min às 09:00 ocupa até 10:30.
  */
-function estadoDoHorario(banco, profissional, data, hora) {
+const minutosDe = (hhmm) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5));
+const seSobrepoem = (a, b) => a.inicio < b.fim && b.inicio < a.fim;
+
+function estadoDoHorario(banco, profissional, data, hora, duracao = 60, ignorarId) {
+    const pedido = { inicio: minutosDe(hora), fim: minutosDe(hora) + duracao };
     if (horarioJaPassou(data, hora)) return "indisponivel";
 
-    const bloqueado = profissional.bloqueios.some(b => b.data === data && b.hora === hora);
+    const bloqueado = profissional.bloqueios.some(b => b.data === data && seSobrepoem(pedido, { inicio: minutosDe(b.hora), fim: minutosDe(b.hora) + 60 }));
     if (bloqueado) return "indisponivel";
 
-    const ocupado = banco.agendamentos.some(a =>
-        a.profissionalId === profissional.id &&
-        a.data === data &&
-        a.hora === hora &&
-        STATUS_OCUPAM_HORARIO.includes(a.status)
-    );
+    const ocupado = banco.agendamentos.some(a => {
+        if (a.profissionalId !== profissional.id || a.data !== data || !STATUS_OCUPAM_HORARIO.includes(a.status) || a.id === ignorarId) return false;
+        const servico = banco.servicos.find(s => s.id === a.servicoId);
+        return seSobrepoem(pedido, { inicio: minutosDe(a.hora), fim: minutosDe(a.hora) + (servico ? servico.duracaoMin : 60) });
+    });
     return ocupado ? "ocupado" : "disponivel";
+}
+
+// Distância em linha reta entre dois pontos (fórmula de Haversine), em km — a mesma conta da API
+function distanciaKm(lat1, lon1, lat2, lon2) {
+    const rad = (g) => (g * Math.PI) / 180;
+    const a = Math.sin(rad(lat2 - lat1) / 2) ** 2 + Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(rad(lon2 - lon1) / 2) ** 2;
+    return 6371 * 2 * Math.asin(Math.sqrt(a));
 }
 
 /* ---------- Implementação MOCK ---------- */
@@ -119,15 +130,27 @@ const apiMock = {
         return copiar(lista);
     },
 
-    // GET /api/profissionais?servicoId=&origem=   (na API real: latitude e longitude do cliente)
-    // Devolve cada profissional com distanciaKm a partir da origem, do mais próximo ao mais distante.
-    async listarProfissionais({ servicoId, origem } = {}) {
+    // GET /api/profissionais?servicoId=&latitude=&longitude=&raioKm=   (ou ?origem=, posições de exemplo)
+    // Com latitude/longitude: só os locais até raioKm (padrão 30), do mais próximo ao mais distante.
+    async listarProfissionais({ servicoId, origem, latitude, longitude, raioKm = 30 } = {}) {
         const banco = carregarBanco();
         let lista = banco.profissionais;
         if (servicoId) lista = lista.filter(p => p.servicosIds.includes(Number(servicoId)));
+        if (latitude !== undefined && longitude !== undefined) {
+            return copiar(lista
+                .filter(p => p.latitude != null && p.longitude != null)
+                .map(p => ({ ...p, distanciaKm: Math.round(distanciaKm(Number(latitude), Number(longitude), p.latitude, p.longitude) * 10) / 10 }))
+                .filter(p => p.distanciaKm <= Number(raioKm))
+                .sort((a, b) => a.distanciaKm - b.distanciaKm));
+        }
         const local = (MockData.origens || []).find(o => o.id === origem);
         const comDistancia = lista.map(p => ({ ...p, distanciaKm: local ? local.distancias[p.id] : p.distanciaKm }));
         return copiar(comDistancia.sort((a, b) => a.distanciaKm - b.distanciaKm));
+    },
+
+    // GET /api/localizacao?cep=  — no modo simulado não há internet: só funciona com a API ligada
+    async buscarLocalizacaoPorCep() {
+        throw erroApi("A busca por CEP precisa da API ligada (abra a página com ?api=http). Use a sua localização ou o local de exemplo.", 400);
     },
 
     // Só no mock: localizações de exemplo para testar a lista por proximidade
@@ -135,16 +158,18 @@ const apiMock = {
         return copiar((MockData.origens || []).map(o => ({ id: o.id, nome: o.nome })));
     },
 
-    // GET /api/horarios-disponiveis?profissionalId=&data=AAAA-MM-DD
+    // GET /api/horarios-disponiveis?profissionalId=&data=AAAA-MM-DD[&servicoId=]
     // Retorna [{ hora: "10:00", estado: "disponivel" | "ocupado" | "indisponivel" }]
-    async listarHorariosDisponiveis({ profissionalId, data }) {
+    async listarHorariosDisponiveis({ profissionalId, data, servicoId }) {
         const banco = carregarBanco();
         const profissional = banco.profissionais.find(p => p.id === Number(profissionalId));
         if (!profissional) throw erroApi("Profissional não encontrado.", 404);
 
         const diaSemana = new Date(`${data}T00:00:00`).getDay();
         const horas = profissional.disponibilidade[diaSemana] || [];
-        return horas.map(hora => ({ hora, estado: estadoDoHorario(banco, profissional, data, hora) }));
+        const servico = banco.servicos.find(s => s.id === Number(servicoId));
+        const duracao = servico ? servico.duracaoMin : 60;
+        return horas.map(hora => ({ hora, estado: estadoDoHorario(banco, profissional, data, hora, duracao) }));
     },
 
     // POST /api/agendamentos
@@ -154,7 +179,7 @@ const apiMock = {
         if (!profissional) throw erroApi("Profissional não encontrado.", 404);
 
         // O back-end repetirá esta verificação: é ele quem impede conflitos de verdade.
-        const horarios = await apiMock.listarHorariosDisponiveis({ profissionalId, data });
+        const horarios = await apiMock.listarHorariosDisponiveis({ profissionalId, data, servicoId });
         const escolhido = horarios.find(h => h.hora === hora);
         if (!escolhido || escolhido.estado !== "disponivel") {
             throw erroApi("Este horário não está mais disponível.", 409);
@@ -258,6 +283,17 @@ const apiMock = {
         return copiar(servico);
     },
 
+    // DELETE /api/servicos/:id  (só serviço que nunca foi agendado)
+    async excluirServico(id) {
+        const banco = carregarBanco();
+        if (banco.agendamentos.some(a => a.servicoId === Number(id))) {
+            throw erroApi("Este serviço já tem agendamentos e não pode ser excluído. Desative-o para que não apareça mais aos clientes.", 409);
+        }
+        banco.servicos = banco.servicos.filter(s => s.id !== Number(id));
+        banco.profissionais.forEach(pr => { pr.servicosIds = pr.servicosIds.filter(sid => sid !== Number(id)); });
+        salvarBanco(banco);
+    },
+
     /* ----- Área do profissional: disponibilidade ----- */
 
     // GET /api/profissionais/:id/disponibilidade
@@ -334,6 +370,7 @@ const apiHttp = {
     listarServicos: (f) => requisicao("GET", `/servicos${montarQuery(f)}`),
     listarProfissionais: (f) => requisicao("GET", `/profissionais${montarQuery(f)}`),
     listarOrigens: () => requisicao("GET", "/origens"),
+    buscarLocalizacaoPorCep: (cep) => requisicao("GET", `/localizacao${montarQuery({ cep })}`),
     listarHorariosDisponiveis: (f) => requisicao("GET", `/horarios-disponiveis${montarQuery(f)}`),
     criarAgendamento: (d) => requisicao("POST", "/agendamentos", d),
     listarAgendamentos: (f) => requisicao("GET", `/agendamentos${montarQuery(f)}`),
@@ -342,6 +379,7 @@ const apiHttp = {
     excluirAgendamento: (id) => requisicao("DELETE", `/agendamentos/${id}`),
     criarServico: (d) => requisicao("POST", "/servicos", d),
     atualizarServico: (id, d) => requisicao("PUT", `/servicos/${id}`, d),
+    excluirServico: (id) => requisicao("DELETE", `/servicos/${id}`),
     obterDisponibilidade: (id) => requisicao("GET", `/profissionais/${id}/disponibilidade`),
     salvarDisponibilidade: (id, d) => requisicao("PUT", `/profissionais/${id}/disponibilidade`, d),
     restaurarDadosExemplo: async () => {}

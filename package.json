@@ -1,0 +1,12 @@
+{
+  "name": "agenda-facil",
+  "private": true,
+  "description": "Atalhos: permite rodar os comandos da API a partir da raiz do projeto (ex.: npm.cmd start). A API fica em Agenda_facil/back-end/src.",
+  "scripts": {
+    "start": "npm --prefix Agenda_facil/back-end/src run start",
+    "dev": "npm --prefix Agenda_facil/back-end/src run dev",
+    "verificar": "npm --prefix Agenda_facil/back-end/src run verificar",
+    "geocodificar": "npm --prefix Agenda_facil/back-end/src run geocodificar",
+    "test": "npm --prefix Agenda_facil/back-end/src run test"
+  }
+}

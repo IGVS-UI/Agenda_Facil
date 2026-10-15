@@ -1,7 +1,7 @@
 -- =====================================================================
 -- Agenda Fácil — dados de exemplo (OPCIONAL, só para desenvolvimento e testes)
 --
--- Rode DEPOIS do ajustes_banco.sql, num banco vazio ou de testes. Não use em produção.
+-- Rode DEPOIS do criar_banco.sql, num banco vazio ou de testes. Não use em produção.
 -- Espelha os dados de exemplo do front-end: 5 clientes, 4 profissionais, 7 serviços,
 -- agenda semanal, 1 bloqueio e 13 agendamentos nos 4 status (datas relativas a hoje).
 -- Os usuários não têm firebase_uid nem senha: servem só para a API ler e testar.

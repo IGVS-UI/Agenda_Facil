@@ -49,6 +49,7 @@ Para o front-end falar com a API (em vez do mock), abra qualquer página com `?a
 ## Quem está chamando (modo de desenvolvimento)
 
 Com `AUTH_MODO=fake`, o cabeçalho `X-Usuario-Id` diz o usuário (id da tabela `usuario`): 1 a 5 são clientes, 6 a 9 são profissionais.
+Para simular um token do Firebase: `Authorization: Bearer teste:<uid>:<email>:<nome>` (ou `teste-verificado:...` para e-mail confirmado).
 Na integração, vira `Authorization: Bearer <token do Firebase>`, e nada nas regras muda: elas usam só `req.usuario`.
 
 ## Rotas
@@ -60,6 +61,7 @@ Na integração, vira `Authorization: Bearer <token do Firebase>`, e nada nas re
 | `GET /api/servicos?apenasAtivos=false` | profissional | Todos os serviços do próprio profissional, inclusive desativados |
 | `GET /api/profissionais?servicoId=&origem=` | público | Locais ordenados por distância (`origem=centro` ou `latitude=`&`longitude=`) |
 | `GET /api/origens` | público | Localizações de exemplo para testar sem GPS |
+| `GET /api/localizacao?cep=` | público | Latitude/longitude aproximadas de um CEP (para o cliente que não usa o GPS) |
 | `GET /api/horarios-disponiveis?profissionalId=&data=AAAA-MM-DD` | público | Horários do dia: `disponivel`, `ocupado` ou `indisponivel` |
 | `GET /api/me` | logado | Quem sou eu e meu perfil (`403` com `codigo: CADASTRO_INCOMPLETO` se ainda falta concluir o cadastro) |
 | `POST /api/usuarios` | token do Firebase | Cria a conta no sistema (cliente ou profissional com o local) |
@@ -93,6 +95,17 @@ Faça nesta ordem; cada passo mostra se deu certo:
    Confira no Workbench: `SELECT * FROM agendamento ORDER BY id_agendamento DESC LIMIT 5;` — o agendamento novo aparece lá.
 4. **Testes automáticos (opcional):** `npm test` roda as regras na memória; no MySQL, só num banco `_teste` (veja acima).
 
+## Busca por proximidade (localização)
+
+- **Profissional:** no cadastro, o endereço (CEP, rua, número) é convertido em latitude/longitude pelo
+  **OpenStreetMap/Nominatim** (gratuito, sem chave), com o **ViaCEP** completando o endereço do CEP.
+  Se não encontrar (ou sem internet), o cadastro continua, mas o local não aparece na busca até ganhar coordenadas.
+- **Cliente:** informa onde está pelo navegador (GPS, com permissão) ou pelo CEP (`GET /api/localizacao?cep=`).
+- `GET /api/profissionais?latitude=&longitude=` devolve só os locais até `RAIO_BUSCA_KM` (padrão 30 km), do mais perto ao mais longe.
+- **`npm run geocodificar`** preenche as coordenadas dos profissionais que ainda não têm (ex.: cadastrados antes desta função).
+- **`database/remover_dados_exemplo.sql`** (opcional) apaga os dados de exemplo (`@exemplo.com`) e deixa só os cadastros reais.
+- `GEOCODIFICACAO=desligada` no `.env` desliga as consultas externas (os testes automáticos usam assim).
+
 ## Login com Firebase
 
 A API confere o token do Firebase e guarda o perfil (cliente/profissional) no MySQL (`usuario.firebase_uid`).
@@ -101,8 +114,9 @@ A API confere o token do Firebase e guarda o perfil (cliente/profissional) no My
 
 1. **Authentication > Sign-in method:** ative **E-mail/senha** e **Google**.
 2. **Authentication > Settings > Domínios autorizados:** confira se `localhost` está na lista (e adicione `127.0.0.1` se usar esse endereço).
-3. **Configurações do projeto (engrenagem) > Contas de serviço > Gerar nova chave privada:** baixa um arquivo JSON.
-   Salve como `back-end/credenciais/chave-firebase.json` (a pasta `credenciais/` está no `.gitignore`). **Esse arquivo dá acesso total ao projeto: nunca o envie ao GitHub nem a ninguém.**
+3. **(Opcional) Chave de serviço:** para conferir o login a API só precisa do `FIREBASE_PROJECT_ID`. A chave
+   (Configurações do projeto > Contas de serviço > Gerar nova chave privada) só será necessária para recursos administrativos.
+   Se gerar, salve em `back-end/credenciais/` (pasta no `.gitignore`). **Ela dá acesso total ao projeto: nunca a envie ao GitHub nem a ninguém.**
 
 ### Como ligar
 
@@ -110,11 +124,17 @@ No `src/.env`:
 ```
 AUTH_MODO=firebase
 FIREBASE_PROJECT_ID=projeto-ragozzinni
-FIREBASE_CREDENCIAIS=../credenciais/chave-firebase.json
 ```
 No navegador, abra qualquer página com `?auth=firebase&api=http` (volta ao simulado com `?auth=mock&api=mock`).
 Fluxos: **cadastro** cria a pessoa no Firebase e depois a conta no sistema (`POST /api/usuarios`); **login** descobre o perfil em `GET /api/me`;
 quem entra com o **Google pela primeira vez** é levado para "Concluir cadastro". As páginas internas só abrem para o perfil certo.
+
+**Apagou um usuário no console do Firebase?** O cadastro dele continua no MySQL (perfil, agendamentos, local), ligado ao
+login antigo. Ao criar o login de novo com o mesmo e-mail, o site pede para **confirmar o e-mail** (link enviado pelo Firebase);
+depois do clique em "Já confirmei", a API liga o cadastro antigo ao login novo (`[auth] conta N ... ligada a um novo login` no terminal).
+Para apagar a conta de verdade, rode `database/remover_conta.sql` no Workbench (troque o e-mail no topo) **e** apague o usuário no console do Firebase.
+Observações: apagar no console não desloga o navegador na hora (a sessão vale até ~1 h; use "Sair");
+e não ligue a API ao MySQL real enquanto testa com o emulador (os logins do emulador não existem no Firebase real).
 
 ### Testar sem o Firebase real (emulador)
 
@@ -135,6 +155,4 @@ O login com Google pelo emulador abre uma tela de teste do próprio emulador.
 
 ## Pendências conhecidas
 
-- **Coordenadas dos novos locais:** o cadastro do profissional ainda não converte o endereço em latitude/longitude
-  (geocodificação). Esses locais aparecem na lista, mas sem distância e por último.
 - **Avaliação (nota):** ainda não existe no banco.

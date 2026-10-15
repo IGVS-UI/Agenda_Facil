@@ -1,0 +1,5 @@
+# Nunca enviar segredos (senhas, chaves) ao GitHub
+.env
+.env.*
+!.env.example
+node_modules/

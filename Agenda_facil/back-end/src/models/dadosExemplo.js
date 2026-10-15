@@ -24,6 +24,8 @@ function gerar() {
         { id: 9, nome: "Rafael Costa", email: "rafael@exemplo.com", telefone: "(11) 94444-0004", tipo: "profissional" }
     ];
 
+    usuarios = usuarios.map((u) => ({ firebaseUid: null, ativo: true, ...u }));
+
     // avaliacao ainda não existe no banco (funcionalidade futura): aqui é um valor fixo de exemplo
     profissionais = [
         { id: 1, usuarioId: 6, nomeLocal: "Barbearia do João", logradouro: "Rua das Flores", numero: "120", bairro: "Centro", cidade: "São Paulo", uf: "SP", latitude: -23.5617, longitude: -46.6559, avaliacao: 4.8, ativo: true },
@@ -41,6 +43,15 @@ function gerar() {
         { id: 6, profissionalId: 4, nome: "Consulta de nutrição", categoria: "Saúde", descricao: "Avaliação e plano alimentar personalizado.", duracaoMin: 50, preco: 150, ativo: true },
         { id: 7, profissionalId: 3, nome: "Limpeza de pele", categoria: "Beleza", descricao: "Limpeza profunda com hidratação.", duracaoMin: 60, preco: 95, ativo: true }
     ];
+
+    // Campos do cadastro do profissional (os mesmos do banco); endereços e CEP são fictícios
+    profissionais = profissionais.map((p) => ({
+        especialidade: servicos.find((s) => s.profissionalId === p.id).categoria,
+        celular: usuarios.find((u) => u.id === p.usuarioId).telefone,
+        cep: "01310100",
+        complemento: null,
+        ...p
+    }));
 
     // Agenda semanal: dia 0 = domingo ... 6 = sábado; cada item é o início de um horário de uma hora
     const semana = [

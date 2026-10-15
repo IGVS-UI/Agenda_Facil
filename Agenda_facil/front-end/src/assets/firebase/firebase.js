@@ -13,7 +13,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/fireba
 import {
     getAuth, connectAuthEmulator, onAuthStateChanged, signOut,
     createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile,
-    GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail
+    GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail, sendEmailVerification
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 
 // Configuração do projeto (do console do Firebase)
@@ -41,5 +41,5 @@ try {
 
 export {
     onAuthStateChanged, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile,
-    GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail
+    GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail, sendEmailVerification
 };
