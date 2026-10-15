@@ -8,6 +8,7 @@
  * O e-mail vem SEMPRE do token (conferido pelo Firebase), nunca do corpo da requisição.
  */
 const modelo = require("../models");
+const geocodificacao = require("./geocodificacao.service");
 const { requisicaoInvalida, conflito } = require("../middlewares/erros");
 
 const UFS = ["AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO"];
@@ -36,8 +37,7 @@ function validarProfissional(dados, telefone) {
         bairro: texto(dados, "bairro", { max: 80, rotulo: "o bairro" }),
         cidade: texto(dados, "cidade", { max: 80, rotulo: "a cidade" }),
         uf,
-        // latitude/longitude: preenchidas depois, a partir do endereço (geocodificação). Sem elas, o local
-        // aparece na lista, mas sem distância.
+        // latitude/longitude: preenchidas pela geocodificação (logo abaixo, em "criar")
         latitude: null,
         longitude: null
     };
@@ -56,6 +56,13 @@ async function criar(tokenInfo, corpo, jaCadastrado) {
 
     if (await modelo.usuarioPorFirebaseUid(tokenInfo.uid)) throw conflito("Esta conta já está cadastrada. Entre para continuar.");
     if (await modelo.usuarioPorEmail(tokenInfo.email)) throw conflito("Já existe um cadastro com este e-mail.");
+
+    // Endereço -> coordenadas, para o local aparecer na busca por proximidade. Se não achar, o cadastro
+    // continua (o local fica sem coordenadas e pode ser corrigido depois com "npm run geocodificar").
+    if (profissional) {
+        const ponto = await geocodificacao.coordenadasDoEndereco(profissional);
+        if (ponto) Object.assign(profissional, { latitude: ponto.latitude, longitude: ponto.longitude });
+    }
 
     try {
         const { usuario, profissional: local } = await modelo.criarConta({

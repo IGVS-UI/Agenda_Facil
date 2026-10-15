@@ -15,6 +15,9 @@ const config = {
     porta: Number(process.env.PORT) || 3000,
     corsOrigem: process.env.CORS_ORIGEM || "*",
     authModo: process.env.AUTH_MODO || "fake",       // "fake" | "firebase"
+    // Busca por proximidade: raio padrão (km) e serviço de geocodificação ("nominatim" | "desligada")
+    raioBuscaKm: Number(process.env.RAIO_BUSCA_KM) || 30,
+    geocodificacao: process.env.GEOCODIFICACAO || "nominatim",
     // Até quantos dias à frente o cliente pode agendar
     limiteDiasAgendamento: Number(process.env.LIMITE_DIAS_AGENDAMENTO) || 90,
     dadosModo: process.env.DADOS_MODO || "memoria",  // "memoria" | "mysql"
@@ -42,6 +45,7 @@ function validarConfiguracao(c = config) {
     const producao = c.ambiente === "production";
 
     if (!["fake", "firebase"].includes(c.authModo)) erros.push(`AUTH_MODO inválido: "${c.authModo}". Use "fake" ou "firebase".`);
+    if (c.geocodificacao && !["nominatim", "desligada"].includes(c.geocodificacao)) erros.push(`GEOCODIFICACAO inválida: "${c.geocodificacao}". Use "nominatim" ou "desligada".`);
     if (!["memoria", "mysql"].includes(c.dadosModo)) erros.push(`DADOS_MODO inválido: "${c.dadosModo}". Use "memoria" ou "mysql".`);
 
     if (c.authModo === "fake") {

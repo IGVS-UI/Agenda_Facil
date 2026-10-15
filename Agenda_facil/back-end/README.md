@@ -60,6 +60,7 @@ Na integração, vira `Authorization: Bearer <token do Firebase>`, e nada nas re
 | `GET /api/servicos?apenasAtivos=false` | profissional | Todos os serviços do próprio profissional, inclusive desativados |
 | `GET /api/profissionais?servicoId=&origem=` | público | Locais ordenados por distância (`origem=centro` ou `latitude=`&`longitude=`) |
 | `GET /api/origens` | público | Localizações de exemplo para testar sem GPS |
+| `GET /api/localizacao?cep=` | público | Latitude/longitude aproximadas de um CEP (para o cliente que não usa o GPS) |
 | `GET /api/horarios-disponiveis?profissionalId=&data=AAAA-MM-DD` | público | Horários do dia: `disponivel`, `ocupado` ou `indisponivel` |
 | `GET /api/me` | logado | Quem sou eu e meu perfil (`403` com `codigo: CADASTRO_INCOMPLETO` se ainda falta concluir o cadastro) |
 | `POST /api/usuarios` | token do Firebase | Cria a conta no sistema (cliente ou profissional com o local) |
@@ -92,6 +93,16 @@ Faça nesta ordem; cada passo mostra se deu certo:
 3. **Front + API:** abra `servicos_usuario.html?api=http` e faça um agendamento.
    Confira no Workbench: `SELECT * FROM agendamento ORDER BY id_agendamento DESC LIMIT 5;` — o agendamento novo aparece lá.
 4. **Testes automáticos (opcional):** `npm test` roda as regras na memória; no MySQL, só num banco `_teste` (veja acima).
+
+## Busca por proximidade (localização)
+
+- **Profissional:** no cadastro, o endereço (CEP, rua, número) é convertido em latitude/longitude pelo
+  **OpenStreetMap/Nominatim** (gratuito, sem chave), com o **ViaCEP** completando o endereço do CEP.
+  Se não encontrar (ou sem internet), o cadastro continua, mas o local não aparece na busca até ganhar coordenadas.
+- **Cliente:** informa onde está pelo navegador (GPS, com permissão) ou pelo CEP (`GET /api/localizacao?cep=`).
+- `GET /api/profissionais?latitude=&longitude=` devolve só os locais até `RAIO_BUSCA_KM` (padrão 30 km), do mais perto ao mais longe.
+- **`npm run geocodificar`** preenche as coordenadas dos profissionais que ainda não têm (ex.: cadastrados antes desta função).
+- `GEOCODIFICACAO=desligada` no `.env` desliga as consultas externas (os testes automáticos usam assim).
 
 ## Login com Firebase
 
@@ -135,6 +146,4 @@ O login com Google pelo emulador abre uma tela de teste do próprio emulador.
 
 ## Pendências conhecidas
 
-- **Coordenadas dos novos locais:** o cadastro do profissional ainda não converte o endereço em latitude/longitude
-  (geocodificação). Esses locais aparecem na lista, mas sem distância e por último.
 - **Avaliação (nota):** ainda não existe no banco.

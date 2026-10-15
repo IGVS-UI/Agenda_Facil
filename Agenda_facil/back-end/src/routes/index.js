@@ -26,6 +26,7 @@ rotas.post("/usuarios", autenticarToken, usuarios.cadastrar);
 rotas.get("/servicos", autenticarOpcional, servicos.listar);           // (desativados: só o dono)
 rotas.get("/profissionais", profissionais.listar);
 rotas.get("/origens", profissionais.listarOrigens);                    // localizações de exemplo (testes sem GPS)
+rotas.get("/localizacao", profissionais.localizacaoDoCep);             // ?cep= -> latitude/longitude aproximadas
 rotas.get("/horarios-disponiveis", profissionais.horariosDisponiveis);
 
 // Serviços do profissional                                            profissional

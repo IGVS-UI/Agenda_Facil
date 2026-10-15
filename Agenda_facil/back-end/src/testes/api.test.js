@@ -4,6 +4,8 @@
  * Usuários de exemplo: 1 = cliente Igor, 2 = cliente Ana, 6 = profissional João (profissional 1),
  * 7 = profissional Marina (profissional 2).
  */
+// Os testes não consultam a internet (sem geocodificação real)
+process.env.GEOCODIFICACAO = "desligada";
 const { test, before, after, beforeEach } = require("node:test");
 const assert = require("node:assert/strict");
 const app = require("../app");
@@ -84,6 +86,17 @@ test("profissionais vêm ordenados do mais próximo para o mais distante", async
     assert.ok(dados.every((p, i) => i === 0 || dados[i - 1].distanciaKm <= p.distanciaKm));
     const jardim = (await chamar("GET", "/profissionais?origem=jardim")).dados;
     assert.equal(jardim[0].local, "Studio Marina Alves");
+});
+
+test("raio de busca: só locais perto do cliente", async () => {
+    const perto = (await chamar("GET", "/profissionais?latitude=-23.56&longitude=-46.65")).dados;
+    assert.equal(perto.length, 4);                                                          // todos a poucos km
+    const longe = (await chamar("GET", "/profissionais?latitude=-22.9068&longitude=-43.1729")).dados;   // Rio de Janeiro
+    assert.equal(longe.length, 0);
+    const raioGrande = (await chamar("GET", "/profissionais?latitude=-22.9068&longitude=-43.1729&raioKm=500")).dados;
+    assert.equal(raioGrande.length, 4);
+    assert.equal((await chamar("GET", "/profissionais?latitude=-23.56&longitude=-46.65&raioKm=0")).status, 400);
+    assert.equal((await chamar("GET", "/localizacao?cep=123")).status, 400);
 });
 
 test("aceita latitude/longitude e recusa valores inválidos", async () => {
@@ -408,12 +421,13 @@ test("cadastro de profissional: cria o local, entra como profissional e já pode
     assert.equal(servico.status, 201);
     assert.equal(servico.dados.profissionalId, eu.profissionalId);
 
-    // aparece na lista de locais, mas sem distância (ainda sem coordenadas), por último
-    const locais = (await chamar("GET", "/profissionais?origem=centro")).dados;
-    const novo = locais[locais.length - 1];
-    assert.equal(novo.local, "Barbearia Nova");
-    assert.equal(novo.distanciaKm, null);
-    assert.ok(locais.slice(0, -1).every((p) => typeof p.distanciaKm === "number"));
+    // sem coordenadas (geocodificação desligada nos testes) não entra na busca por proximidade...
+    assert.ok(!(await chamar("GET", "/profissionais?origem=centro")).dados.some((p) => p.local === "Barbearia Nova"));
+    // ...mas aparece quando a lista não é por proximidade; e passa a aparecer quando ganha coordenadas
+    assert.ok((await chamar("GET", "/profissionais")).dados.some((p) => p.local === "Barbearia Nova"));
+    await modelo.atualizarLocalizacaoDoProfissional(eu.profissionalId, -23.5600, -46.6550);
+    const perto = (await chamar("GET", "/profissionais?origem=centro")).dados.find((p) => p.local === "Barbearia Nova");
+    assert.equal(typeof perto.distanciaKm, "number");
     // um cliente não consegue virar profissional por conta própria: o perfil só é gravado no cadastro
     assert.equal((await chamar("POST", "/servicos", { usuario: IGOR, corpo: { nome: "x", categoria: "x", descricao: "x", duracaoMin: 30, preco: 1 } })).status, 403);
 });

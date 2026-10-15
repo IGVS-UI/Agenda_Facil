@@ -54,6 +54,12 @@ module.exports = {
     profissionalPorId: async (id) => copia(profissionais.find((p) => p.id === Number(id))),
     profissionalPorUsuarioId: async (usuarioId) => copia(profissionais.find((p) => p.usuarioId === Number(usuarioId))),
 
+    atualizarLocalizacaoDoProfissional: async (id, latitude, longitude) => {
+        const p = profissionais.find((x) => x.id === Number(id));
+        if (p) Object.assign(p, { latitude, longitude });
+        return copia(p);
+    },
+
     /* ---------- serviços ---------- */
     listarServicos: async ({ profissionalId } = {}) =>
         copia(servicos.filter((s) => !profissionalId || s.profissionalId === Number(profissionalId))),

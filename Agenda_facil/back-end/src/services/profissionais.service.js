@@ -4,7 +4,9 @@
  * O front só envia a posição do cliente e mostra o distanciaKm que recebe.
  */
 const modelo = require("../models");
-const { requisicaoInvalida } = require("../middlewares/erros");
+const geocodificacao = require("./geocodificacao.service");
+const { raioBuscaKm } = require("../config/env");
+const { requisicaoInvalida, naoEncontrado } = require("../middlewares/erros");
 
 // Posições de exemplo para testar sem GPS (o front mostra o seletor "Estou em")
 const ORIGENS = [
@@ -41,9 +43,12 @@ function resolverPosicao({ origem, latitude, longitude }) {
 
 const listarOrigens = () => ORIGENS.map(({ id, nome }) => ({ id, nome }));
 
-// GET /api/profissionais?servicoId=&origem=  (ou latitude e longitude)
-async function listar({ servicoId, ...localizacao }) {
+// GET /api/profissionais?servicoId=&latitude=&longitude=&raioKm=   (ou ?origem=, posições de exemplo)
+// Com a posição do cliente: só os locais até "raioKm" (padrão RAIO_BUSCA_KM), do mais perto ao mais longe.
+async function listar({ servicoId, raioKm, ...localizacao }) {
     const posicao = resolverPosicao(localizacao);
+    const raio = raioKm === undefined ? raioBuscaKm : Number(raioKm);
+    if (!Number.isFinite(raio) || raio <= 0 || raio > 500) throw requisicaoInvalida("O raio deve ser um número entre 1 e 500 km.");
     const [profissionais, servicos] = await Promise.all([modelo.listarProfissionais(), modelo.listarServicos()]);
     const ativos = servicos.filter((s) => s.ativo);
 
@@ -63,12 +68,19 @@ async function listar({ servicoId, ...localizacao }) {
             servicosIds
         });
     }
-    // Mais próximo primeiro (quem ainda não tem coordenadas vem por último); sem posição, ordem alfabética
-    const semDistancia = (p) => p.distanciaKm === null;
-    return lista.sort((a, b) => {
-        if (posicao && semDistancia(a) !== semDistancia(b)) return semDistancia(a) ? 1 : -1;
-        return posicao && !semDistancia(a) ? a.distanciaKm - b.distanciaKm : a.local.localeCompare(b.local);
-    });
+    if (!posicao) return lista.sort((a, b) => a.local.localeCompare(b.local));
+    // Com posição: fora ficam os locais sem coordenadas (não dá para saber a distância) e os além do raio
+    return lista
+        .filter((p) => p.distanciaKm !== null && p.distanciaKm <= raio)
+        .sort((a, b) => a.distanciaKm - b.distanciaKm);
 }
 
-module.exports = { listar, listarOrigens, distanciaKm };
+// GET /api/localizacao?cep=  -> posição aproximada de um CEP (quando o cliente não quer usar o GPS)
+async function localizacaoDoCep({ cep }) {
+    if (String(cep || "").replace(/\D/g, "").length !== 8) throw requisicaoInvalida("Informe um CEP com 8 números.");
+    const ponto = await geocodificacao.coordenadasDoCep(cep);
+    if (!ponto) throw naoEncontrado("Não encontramos este CEP. Confira os números ou use a sua localização.");
+    return ponto;
+}
+
+module.exports = { listar, listarOrigens, localizacaoDoCep };

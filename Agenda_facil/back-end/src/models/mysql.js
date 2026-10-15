@@ -112,6 +112,11 @@ module.exports = {
     profissionalPorId: async (id) => comoProfissional(await primeira("SELECT * FROM profissional WHERE id_profissional = ?", [Number(id)])),
     profissionalPorUsuarioId: async (usuarioId) => comoProfissional(await primeira("SELECT * FROM profissional WHERE usuario_id = ?", [Number(usuarioId)])),
 
+    atualizarLocalizacaoDoProfissional: async (id, latitude, longitude) => {
+        await consultar("UPDATE profissional SET latitude = ?, longitude = ? WHERE id_profissional = ?", [latitude, longitude, Number(id)]);
+        return comoProfissional(await primeira("SELECT * FROM profissional WHERE id_profissional = ?", [Number(id)]));
+    },
+
     /* ---------- serviços ---------- */
     listarServicos: async ({ profissionalId } = {}) => (await (profissionalId
         ? consultar("SELECT * FROM servico WHERE profissional_id = ? ORDER BY id_servico", [Number(profissionalId)])
