@@ -132,7 +132,7 @@ quem entra com o **Google pela primeira vez** é levado para "Concluir cadastro"
 **Apagou um usuário no console do Firebase?** O cadastro dele continua no MySQL (perfil, agendamentos, local), ligado ao
 login antigo. Ao criar o login de novo com o mesmo e-mail, o site pede para **confirmar o e-mail** (link enviado pelo Firebase);
 depois do clique em "Já confirmei", a API liga o cadastro antigo ao login novo (`[auth] conta N ... ligada a um novo login` no terminal).
-Para começar do zero de verdade, apague também a linha no MySQL (e o que estiver ligado a ela).
+Para apagar a conta de verdade, rode `database/remover_conta.sql` no Workbench (troque o e-mail no topo) **e** apague o usuário no console do Firebase.
 Observações: apagar no console não desloga o navegador na hora (a sessão vale até ~1 h; use "Sair");
 e não ligue a API ao MySQL real enquanto testa com o emulador (os logins do emulador não existem no Firebase real).
 
