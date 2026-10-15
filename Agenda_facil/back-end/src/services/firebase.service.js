@@ -1,6 +1,6 @@
 /*
  * Confere o token (ID token) que o Firebase Authentication entregou ao navegador.
- * Se o token for válido, devolve quem é a pessoa: { uid, email, nome }.
+ * Se o token for válido, devolve quem é a pessoa: { uid, email, nome, emailVerificado }.
  *
  * Credenciais (só no .env, nunca no GitHub):
  *   FIREBASE_PROJECT_ID   id do projeto (ex.: projeto-ragozzinni)
@@ -30,7 +30,7 @@ function auth() {
 async function verificarToken(token) {
     try {
         const d = await auth().verifyIdToken(token);
-        return { uid: d.uid, email: d.email || null, nome: d.name || null };
+        return { uid: d.uid, email: d.email || null, nome: d.name || null, emailVerificado: d.email_verified === true };
     } catch (erro) {
         // erro de configuração (chave/projeto errados) aparece no terminal da API; para o cliente, é sempre "sessão inválida"
         if (erro.code !== "auth/argument-error" && erro.code !== "auth/id-token-expired") {

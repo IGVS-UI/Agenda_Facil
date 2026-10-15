@@ -403,8 +403,34 @@ test("cadastro recusa perfil/dados inválidos e e-mail já usado", async () => {
     assert.equal((await chamar("POST", "/usuarios", { token, corpo: { perfil: "profissional", nome: "X", telefone: "1", profissional: { ...ENDERECO, cep: "123" } } })).status, 400);
     assert.equal((await chamar("POST", "/usuarios", { token, corpo: { perfil: "profissional", nome: "X", telefone: "1", profissional: { ...ENDERECO, uf: "ZZ" } } })).status, 400);
     // e-mail do Igor (já existe no banco) com outro uid do Firebase
-    assert.equal((await chamar("POST", "/usuarios", { token: "teste:uid-y:igor@exemplo.com:Outro", corpo: { perfil: "cliente", nome: "Outro" } })).status, 409);
+    const repetido = await chamar("POST", "/usuarios", { token: "teste:uid-y:igor@exemplo.com:Outro", corpo: { perfil: "cliente", nome: "Outro" } });
+    assert.equal(repetido.status, 409);
+    assert.equal(repetido.dados.codigo, "EMAIL_JA_CADASTRADO");
     assert.equal((await chamar("GET", "/me", { token })).dados.codigo, "CADASTRO_INCOMPLETO");                                      // nada foi criado
+});
+
+test("conta apagada e recriada no Firebase (uid novo, mesmo e-mail): religa só com o e-mail confirmado", async () => {
+    const corpo = { perfil: "cliente", nome: "Bia" };
+    assert.equal((await chamar("POST", "/usuarios", { token: "teste:uid-antigo:bia@exemplo.com:Bia", corpo })).status, 201);
+    const agendado = await chamar("POST", "/agendamentos", { token: "teste:uid-antigo:bia@exemplo.com:Bia", corpo: { servicoId: 1, profissionalId: 1, data: proximaQuarta(), hora: "09:00" } });
+    assert.equal(agendado.status, 201);
+
+    // login novo SEM e-mail confirmado: não manda para "concluir cadastro" (o loop antigo) e não entrega a conta
+    const novo = "teste:uid-novo:BIA@exemplo.com:Bia";
+    for (const r of [await chamar("GET", "/me", { token: novo }), await chamar("POST", "/usuarios", { token: novo, corpo })]) {
+        assert.equal(r.status, 409);
+        assert.equal(r.dados.codigo, "EMAIL_JA_CADASTRADO");
+    }
+
+    // depois de confirmar o e-mail: entra direto na conta antiga, com os agendamentos dela
+    const confirmado = "teste-verificado:uid-novo:bia@exemplo.com:Bia";
+    const eu = await chamar("GET", "/me", { token: confirmado });
+    assert.equal(eu.status, 200);
+    assert.equal(eu.dados.perfil, "cliente");
+    assert.ok((await chamar("GET", "/agendamentos", { token: confirmado })).dados.some((a) => a.id === agendado.dados.id));
+    assert.equal((await chamar("POST", "/usuarios", { token: confirmado, corpo })).status, 409);       // não duplica a conta
+    // o login antigo deixou de valer
+    assert.equal((await chamar("GET", "/me", { token: "teste:uid-antigo:bia@exemplo.com:Bia" })).dados.codigo, "EMAIL_JA_CADASTRADO");
 });
 
 test("cadastro de profissional: cria o local, entra como profissional e já pode criar serviços", async () => {

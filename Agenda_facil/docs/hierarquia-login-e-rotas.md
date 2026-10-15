@@ -113,6 +113,16 @@ Firebase: signIn(...)  -> token
   -> authService guarda o usuário e vai para a home do perfil
 ```
 
+**Conta apagada e recriada no Firebase (mesmo e-mail, uid novo)**
+```
+GET /api/me ou POST /api/usuarios  -> uid sem conta, mas o e-mail já tem cadastro no MySQL
+  e-mail confirmado no token (email_verified)? -> API religa usuario.firebase_uid ao uid novo e segue normalmente
+  não confirmado?                             -> 409 EMAIL_JA_CADASTRADO: o front envia o link de confirmação do
+                                                 Firebase; depois do clique, "Já confirmei" renova o token e entra
+```
+Sem exigir a confirmação, qualquer pessoa que criasse um login com o e-mail de outra herdaria o cadastro dela
+(perfil, agendamentos, local). Contas Google já chegam confirmadas e são religadas direto.
+
 **O seletor "Sou cliente / Sou profissional" na tela de login é só UX.** O perfil que vale é o que a API devolve. Se a pessoa escolher o perfil errado, mostra "Esta conta é de cliente" em vez de entrar.
 
 ## 7. Regras de autorização na API (futuro)

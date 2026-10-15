@@ -78,6 +78,11 @@ module.exports = {
     usuarioPorId: async (id) => comoUsuario(await primeira("SELECT * FROM usuario WHERE id_usuario = ? AND ativo = 1", [Number(id)])),
     usuarioPorFirebaseUid: async (uid) => comoUsuario(await primeira("SELECT * FROM usuario WHERE firebase_uid = ? AND ativo = 1", [uid])),
     usuarioPorEmail: async (email) => comoUsuario(await primeira("SELECT * FROM usuario WHERE email = ?", [String(email)])),
+    // Liga a conta a um novo login do Firebase (o antigo foi apagado/recriado). Devolve a conta, ou null se não religou.
+    religarFirebaseUid: async (id, uid) => {
+        const [r] = await conexoes().execute("UPDATE usuario SET firebase_uid = ? WHERE id_usuario = ? AND ativo = 1", [uid, Number(id)]);
+        return r.affectedRows ? comoUsuario(await primeira("SELECT * FROM usuario WHERE id_usuario = ?", [Number(id)])) : null;
+    },
     // Cria a conta (e o local, se for profissional) numa transação: ou grava os dois, ou nenhum
     criarConta: async ({ usuario, profissional }) => {
         const conexao = await conexoes().getConnection();

@@ -37,6 +37,12 @@ module.exports = {
     usuarioPorId: async (id) => copia(usuarios.find((u) => u.id === Number(id) && u.ativo)),
     usuarioPorFirebaseUid: async (uid) => copia(usuarios.find((u) => u.firebaseUid && u.firebaseUid === uid && u.ativo)),
     usuarioPorEmail: async (email) => copia(usuarios.find((u) => u.email.toLowerCase() === String(email).toLowerCase())),
+    religarFirebaseUid: async (id, uid) => {
+        const u = usuarios.find((x) => x.id === Number(id) && x.ativo);
+        if (!u) return null;
+        u.firebaseUid = uid;
+        return copia(u);
+    },
     // Cria a conta (e o local, se for profissional) de uma vez só
     criarConta: async ({ usuario, profissional }) => {
         const novoUsuario = { id: proximoId.usuario++, ativo: true, ...usuario };

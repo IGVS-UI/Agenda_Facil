@@ -49,6 +49,7 @@ Para o front-end falar com a API (em vez do mock), abra qualquer página com `?a
 ## Quem está chamando (modo de desenvolvimento)
 
 Com `AUTH_MODO=fake`, o cabeçalho `X-Usuario-Id` diz o usuário (id da tabela `usuario`): 1 a 5 são clientes, 6 a 9 são profissionais.
+Para simular um token do Firebase: `Authorization: Bearer teste:<uid>:<email>:<nome>` (ou `teste-verificado:...` para e-mail confirmado).
 Na integração, vira `Authorization: Bearer <token do Firebase>`, e nada nas regras muda: elas usam só `req.usuario`.
 
 ## Rotas
@@ -127,6 +128,13 @@ FIREBASE_PROJECT_ID=projeto-ragozzinni
 No navegador, abra qualquer página com `?auth=firebase&api=http` (volta ao simulado com `?auth=mock&api=mock`).
 Fluxos: **cadastro** cria a pessoa no Firebase e depois a conta no sistema (`POST /api/usuarios`); **login** descobre o perfil em `GET /api/me`;
 quem entra com o **Google pela primeira vez** é levado para "Concluir cadastro". As páginas internas só abrem para o perfil certo.
+
+**Apagou um usuário no console do Firebase?** O cadastro dele continua no MySQL (perfil, agendamentos, local), ligado ao
+login antigo. Ao criar o login de novo com o mesmo e-mail, o site pede para **confirmar o e-mail** (link enviado pelo Firebase);
+depois do clique em "Já confirmei", a API liga o cadastro antigo ao login novo (`[auth] conta N ... ligada a um novo login` no terminal).
+Para começar do zero de verdade, apague também a linha no MySQL (e o que estiver ligado a ela).
+Observações: apagar no console não desloga o navegador na hora (a sessão vale até ~1 h; use "Sair");
+e não ligue a API ao MySQL real enquanto testa com o emulador (os logins do emulador não existem no Firebase real).
 
 ### Testar sem o Firebase real (emulador)
 

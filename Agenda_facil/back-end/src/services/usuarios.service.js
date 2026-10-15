@@ -9,7 +9,7 @@
  */
 const modelo = require("../models");
 const geocodificacao = require("./geocodificacao.service");
-const { requisicaoInvalida, conflito } = require("../middlewares/erros");
+const { requisicaoInvalida, conflito, emailJaCadastrado } = require("../middlewares/erros");
 
 const UFS = ["AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO"];
 
@@ -55,7 +55,8 @@ async function criar(tokenInfo, corpo, jaCadastrado) {
     const profissional = corpo.perfil === "profissional" ? validarProfissional(corpo.profissional, telefone) : null;
 
     if (await modelo.usuarioPorFirebaseUid(tokenInfo.uid)) throw conflito("Esta conta já está cadastrada. Entre para continuar.");
-    if (await modelo.usuarioPorEmail(tokenInfo.email)) throw conflito("Já existe um cadastro com este e-mail.");
+    // (a autenticação já religa a conta quando o e-mail está confirmado; aqui sobra o caso sem confirmação)
+    if (await modelo.usuarioPorEmail(tokenInfo.email)) throw emailJaCadastrado();
 
     // Endereço -> coordenadas, para o local aparecer na busca por proximidade. Se não achar, o cadastro
     // continua (o local fica sem coordenadas e pode ser corrigido depois com "npm run geocodificar").
@@ -72,7 +73,7 @@ async function criar(tokenInfo, corpo, jaCadastrado) {
         return { id: usuario.id, nome: usuario.nome, perfil: usuario.tipo, ...(local ? { profissionalId: local.id } : {}) };
     } catch (erro) {
         // dois cadastros iguais ao mesmo tempo: o UNIQUE do banco recusa o segundo
-        if (erro.code === "ER_DUP_ENTRY") throw conflito("Esta conta já está cadastrada. Entre para continuar.");
+        if (erro.code === "ER_DUP_ENTRY") throw /email/i.test(erro.sqlMessage || "") ? emailJaCadastrado() : conflito("Esta conta já está cadastrada. Entre para continuar.");
         throw erro;
     }
 }
