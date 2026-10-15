@@ -102,6 +102,7 @@ Faça nesta ordem; cada passo mostra se deu certo:
 - **Cliente:** informa onde está pelo navegador (GPS, com permissão) ou pelo CEP (`GET /api/localizacao?cep=`).
 - `GET /api/profissionais?latitude=&longitude=` devolve só os locais até `RAIO_BUSCA_KM` (padrão 30 km), do mais perto ao mais longe.
 - **`npm run geocodificar`** preenche as coordenadas dos profissionais que ainda não têm (ex.: cadastrados antes desta função).
+- **`database/remover_dados_exemplo.sql`** (opcional) apaga os dados de exemplo (`@exemplo.com`) e deixa só os cadastros reais.
 - `GEOCODIFICACAO=desligada` no `.env` desliga as consultas externas (os testes automáticos usam assim).
 
 ## Login com Firebase
