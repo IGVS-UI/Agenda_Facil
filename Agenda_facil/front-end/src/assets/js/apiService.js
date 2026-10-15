@@ -30,7 +30,7 @@ function escolherModo() {
 const API_MODO = escolherModo();               // "mock" | "http"
 const API_URL = "http://localhost:3000/api";   // usado só no modo "http"
 
-const CHAVE_STORAGE = "agendaFacil:dados:v2";
+const CHAVE_STORAGE = "agendaFacil:dados:v3";   // v3: profissionais com latitude/longitude
 
 // Status em que o horário continua ocupado
 const STATUS_OCUPAM_HORARIO = ["PENDENTE", "CONFIRMADO"];
@@ -108,6 +108,13 @@ function estadoDoHorario(banco, profissional, data, hora, duracao = 60, ignorarI
     return ocupado ? "ocupado" : "disponivel";
 }
 
+// Distância em linha reta entre dois pontos (fórmula de Haversine), em km — a mesma conta da API
+function distanciaKm(lat1, lon1, lat2, lon2) {
+    const rad = (g) => (g * Math.PI) / 180;
+    const a = Math.sin(rad(lat2 - lat1) / 2) ** 2 + Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(rad(lon2 - lon1) / 2) ** 2;
+    return 6371 * 2 * Math.asin(Math.sqrt(a));
+}
+
 /* ---------- Implementação MOCK ---------- */
 
 const apiMock = {
@@ -123,15 +130,27 @@ const apiMock = {
         return copiar(lista);
     },
 
-    // GET /api/profissionais?servicoId=&origem=   (na API real: latitude e longitude do cliente)
-    // Devolve cada profissional com distanciaKm a partir da origem, do mais próximo ao mais distante.
-    async listarProfissionais({ servicoId, origem } = {}) {
+    // GET /api/profissionais?servicoId=&latitude=&longitude=&raioKm=   (ou ?origem=, posições de exemplo)
+    // Com latitude/longitude: só os locais até raioKm (padrão 30), do mais próximo ao mais distante.
+    async listarProfissionais({ servicoId, origem, latitude, longitude, raioKm = 30 } = {}) {
         const banco = carregarBanco();
         let lista = banco.profissionais;
         if (servicoId) lista = lista.filter(p => p.servicosIds.includes(Number(servicoId)));
+        if (latitude !== undefined && longitude !== undefined) {
+            return copiar(lista
+                .filter(p => p.latitude != null && p.longitude != null)
+                .map(p => ({ ...p, distanciaKm: Math.round(distanciaKm(Number(latitude), Number(longitude), p.latitude, p.longitude) * 10) / 10 }))
+                .filter(p => p.distanciaKm <= Number(raioKm))
+                .sort((a, b) => a.distanciaKm - b.distanciaKm));
+        }
         const local = (MockData.origens || []).find(o => o.id === origem);
         const comDistancia = lista.map(p => ({ ...p, distanciaKm: local ? local.distancias[p.id] : p.distanciaKm }));
         return copiar(comDistancia.sort((a, b) => a.distanciaKm - b.distanciaKm));
+    },
+
+    // GET /api/localizacao?cep=  — no modo simulado não há internet: só funciona com a API ligada
+    async buscarLocalizacaoPorCep() {
+        throw erroApi("A busca por CEP precisa da API ligada (abra a página com ?api=http). Use a sua localização ou o local de exemplo.", 400);
     },
 
     // Só no mock: localizações de exemplo para testar a lista por proximidade
@@ -351,6 +370,7 @@ const apiHttp = {
     listarServicos: (f) => requisicao("GET", `/servicos${montarQuery(f)}`),
     listarProfissionais: (f) => requisicao("GET", `/profissionais${montarQuery(f)}`),
     listarOrigens: () => requisicao("GET", "/origens"),
+    buscarLocalizacaoPorCep: (cep) => requisicao("GET", `/localizacao${montarQuery({ cep })}`),
     listarHorariosDisponiveis: (f) => requisicao("GET", `/horarios-disponiveis${montarQuery(f)}`),
     criarAgendamento: (d) => requisicao("POST", "/agendamentos", d),
     listarAgendamentos: (f) => requisicao("GET", `/agendamentos${montarQuery(f)}`),
