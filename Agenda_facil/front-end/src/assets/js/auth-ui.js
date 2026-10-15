@@ -85,8 +85,42 @@
         return dados;
     }
 
+    const escapar = (t) => String(t).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+
+    /*
+     * O e-mail já tem cadastro no Agenda Fácil, mas ligado a outro login do Firebase (a conta foi apagada
+     * e criada de novo). Envia o link de confirmação; depois de clicar nele, "Já confirmei" religa o cadastro.
+     */
+    async function mostrarVinculo({ reenviar = false } = {}) {
+        const acoes = '<span class="d-flex flex-wrap gap-2 mt-2">'
+            + '<button type="button" class="btn btn-primary btn-sm" data-vinculo="conferir">Já confirmei</button>'
+            + '<button type="button" class="btn btn-outline-secondary btn-sm" data-vinculo="reenviar">Reenviar o link</button>'
+            + '<button type="button" class="btn btn-link btn-sm" data-vinculo="sair">Sair e usar outro e-mail</button></span>';
+        try {
+            const email = await AuthService.enviarConfirmacaoDeEmail({ reenviar });
+            mostrarStatus(`Este e-mail já tem um cadastro no Agenda Fácil, ligado a um login antigo. Para usar este login no seu cadastro, `
+                + `abra o link que enviamos para <strong>${escapar(email)}</strong> (veja também o spam) e depois toque em “Já confirmei”.${acoes}`, "ok");
+        } catch (erro) {
+            mostrarStatus(`${escapar(AuthService.traduzirErro(erro))}${acoes}`, "erro");
+        }
+    }
+
+    async function acaoDoVinculo(acao) {
+        if (acao === "sair") {
+            await AuthService.sair();
+            return location.replace("login.html");
+        }
+        if (acao === "reenviar") return mostrarVinculo({ reenviar: true });
+        const eu = await AuthService.conferirConfirmacaoDeEmail();
+        if (eu.vincular) return mostrarVinculo().then(() => {
+            status.insertAdjacentHTML("afterbegin", "<strong>Ainda não recebemos a confirmação.</strong> ");
+        });
+        irParaAreaDo(eu, "E-mail confirmado. O seu cadastro foi ligado a este login.");
+    }
+
     // Leva a pessoa para a página do perfil que o BANCO diz que ela tem
     function irParaAreaDo(eu, aviso) {
+        if (eu.vincular) return mostrarVinculo();
         if (eu.incompleto) {
             mostrarStatus("Falta concluir o seu cadastro. Levando você para lá…", "ok");
             return setTimeout(() => { location.href = `../${AuthService.CADASTRO_CONCLUIR}`; }, 900);
@@ -166,6 +200,14 @@
     });
 
     form.addEventListener("click", (e) => {
+        const vinculo = e.target.closest("[data-vinculo]");
+        if (vinculo) {
+            vinculo.disabled = true;
+            acaoDoVinculo(vinculo.dataset.vinculo)
+                .catch((erro) => mostrarStatus(escapar(AuthService.traduzirErro(erro)), "erro"))
+                .finally(() => { vinculo.disabled = false; });
+            return;
+        }
         const olho = e.target.closest(".pa-olho");
         if (olho) {
             const entrada = document.getElementById(olho.dataset.alvo);
@@ -213,6 +255,10 @@
         const usuario = await AuthService.usuarioFirebase();
         if (!usuario) { location.replace("login.html"); return; }
 
+        // Já tem cadastro (ou o e-mail pertence a um cadastro ligado a outro login)? Então não há o que concluir.
+        const eu = await AuthService.meuPerfil();
+        if (!eu.incompleto && !eu.vincular) { location.replace(`../${AuthService.HOME[eu.perfil]}`); return; }
+
         form.dataset.concluir = "1";
         document.getElementById("titulo").textContent = "Concluir cadastro";
         form.querySelector(".pa-enviar span:last-child").textContent = "Concluir cadastro";
@@ -224,6 +270,19 @@
         ["email", "senha", "confirma"].forEach((id) => { form.querySelector(`#${id}`).closest(".pa-campo").hidden = true; });
         const rodape = form.querySelector(".pa-rodape");
         if (rodape) rodape.hidden = true;
+        // saída para quem entrou com o e-mail errado (sem isto, toda página levaria de volta para cá)
+        const sair = document.createElement("p");
+        sair.className = "pa-sub";
+        sair.innerHTML = 'Não é você? <button type="button" class="btn btn-link btn-sm p-0 align-baseline" data-vinculo="sair">Sair e usar outro e-mail</button>';
+        intro.after(sair);
+        if (eu.vincular) {
+            // o cadastro já existe: em vez do formulário, mostra só a confirmação do e-mail
+            const manter = [status, intro, document.getElementById("titulo"), form.querySelector(".pa-logo")];   // "Sair" já vem no painel
+            [...form.children].forEach((el) => { if (!manter.includes(el)) el.hidden = true; });
+            intro.textContent = `Você entrou como ${usuario.email}.`;
+            document.getElementById("titulo").textContent = "Confirme o seu e-mail";
+            return mostrarVinculo();
+        }
         const sugestao = await AuthService.nomeSugerido();
         if (sugestao.nome) form.querySelector("#nome").value = sugestao.nome;
     }
