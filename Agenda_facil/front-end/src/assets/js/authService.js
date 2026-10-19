@@ -12,6 +12,9 @@
  *   cadastrar: cria a pessoa no Firebase -> recebe o token -> POST /api/usuarios (cria a conta no sistema)
  *   entrar:    entra no Firebase -> recebe o token -> GET /api/me (descobre o perfil)
  *              se não houver conta no sistema (ex.: 1º login com Google) -> "cadastro incompleto"
+ *   vincular:  o e-mail já tem cadastro no sistema, mas ligado a OUTRO login do Firebase (a conta foi apagada
+ *              no console e criada de novo). A pessoa confirma o e-mail pelo link do Firebase e a API religa
+ *              o cadastro antigo a este login (sem confirmar, não religa: protege a conta de outra pessoa).
  *
  * Carregue como módulo:  <script type="module" src="../js/authService.js"></script>
  * (depois do apiService.js e do comum.js).
@@ -58,14 +61,42 @@ async function obterToken() {
 
 /* ---------- Perfil (vem da API/banco) ---------- */
 
-// { id, nome, perfil, profissionalId? }  ou  { incompleto: true } quando só falta concluir o cadastro
+// { id, nome, perfil, profissionalId? }, ou { incompleto: true } quando só falta concluir o cadastro,
+// ou { vincular: true } quando o e-mail já tem cadastro ligado a outro login (falta confirmar o e-mail)
 async function meuPerfil() {
     try {
         return await requisicao("GET", "/me");
     } catch (erro) {
         if (erro.codigoApi === "CADASTRO_INCOMPLETO") return { incompleto: true };
+        if (erro.codigoApi === "EMAIL_JA_CADASTRADO") return { vincular: true };
         throw erro;
     }
+}
+
+/* ---------- Religar um cadastro antigo a este login (confirmação de e-mail) ---------- */
+
+// Envia o link de confirmação do Firebase (uma vez por aba, para não esbarrar no limite de envios; "reenviar" força)
+async function enviarConfirmacaoDeEmail({ reenviar = false } = {}) {
+    const fb = await carregarFirebase();
+    const usuario = fb.auth.currentUser || await usuarioFirebase();
+    if (!usuario) throw new Error("Entre novamente para continuar.");
+    const chave = `agendaFacil:confirmacaoEnviada:${usuario.uid}`;
+    let jaEnviado = false;
+    try { jaEnviado = sessionStorage.getItem(chave) === "1"; } catch (erro) { /* sem sessionStorage */ }
+    if (!jaEnviado || reenviar) {
+        await fb.sendEmailVerification(usuario);
+        try { sessionStorage.setItem(chave, "1"); } catch (erro) { /* sem sessionStorage */ }
+    }
+    return usuario.email;
+}
+
+// Depois de clicar no link: pega um token novo (agora com o e-mail confirmado) e pergunta de novo à API
+async function conferirConfirmacaoDeEmail() {
+    const usuario = (await carregarFirebase()).auth.currentUser || await usuarioFirebase();
+    if (!usuario) throw new Error("Entre novamente para continuar.");
+    await usuario.reload();
+    await usuario.getIdToken(true);
+    return meuPerfil();
 }
 
 /* ---------- Entrar, cadastrar, sair ---------- */
@@ -88,7 +119,12 @@ async function entrarComGoogle() {
  * ao entrar, cai em "concluir cadastro" e termina de preencher. Nada se perde.
  */
 async function concluirCadastro(dados) {
-    return requisicao("POST", "/usuarios", dados);
+    try {
+        return await requisicao("POST", "/usuarios", dados);
+    } catch (erro) {
+        if (erro.codigoApi === "EMAIL_JA_CADASTRADO") return { vincular: true };
+        throw erro;
+    }
 }
 
 async function cadastrar(email, senha, dados) {
@@ -131,7 +167,7 @@ async function protegerPagina(perfilEsperado) {
     if (!usuario) { location.replace(`${LOGIN}?perfil=${perfilEsperado}`); return new Promise(() => {}); }
 
     const eu = await meuPerfil();
-    if (eu.incompleto) { location.replace(CADASTRO_CONCLUIR); return new Promise(() => {}); }
+    if (eu.incompleto || eu.vincular) { location.replace(CADASTRO_CONCLUIR); return new Promise(() => {}); }
     if (eu.perfil !== perfilEsperado) { location.replace(HOME[eu.perfil]); return new Promise(() => {}); }
 
     // As páginas leem o usuário logado em Comum.USUARIOS[perfil]
@@ -146,7 +182,7 @@ const MENSAGENS = {
     "auth/wrong-password": "E-mail ou senha incorretos. Confira os dados e tente novamente.",
     "auth/user-not-found": "E-mail ou senha incorretos. Confira os dados e tente novamente.",
     "auth/invalid-email": "Informe um e-mail válido.",
-    "auth/email-already-in-use": "Já existe uma conta com este e-mail. Entre ou recupere a senha.",
+    "auth/email-already-in-use": "Já existe um login com este e-mail. Use “Entrar” com a sua senha, ou “Esqueci minha senha”.",
     "auth/weak-password": "A senha é muito fraca. Use pelo menos 6 caracteres.",
     "auth/too-many-requests": "Muitas tentativas. Aguarde alguns minutos e tente de novo.",
     "auth/network-request-failed": "Sem conexão. Verifique a internet e tente de novo.",
@@ -161,10 +197,28 @@ function traduzirErro(erro) {
     return MENSAGENS[erro && erro.code] || (erro && erro.codigoApi ? erro.message : null) || (erro && erro.message) || "Algo deu errado. Tente novamente.";
 }
 
+/*
+ * Aviso no topo da página dizendo em que modo o sistema está. Sem isto, no modo de demonstração
+ * parece que o cadastro funcionou de verdade (aceita e-mail repetido, nada aparece no Firebase).
+ */
+function mostrarAvisoDoModo() {
+    const aviso = document.createElement("div");
+    aviso.className = `modo-aviso modo-${modo}`;
+    aviso.setAttribute("role", "note");
+    if (modo === "firebase") {
+        aviso.innerHTML = '<strong>Login real (Firebase)</strong> <a href="?auth=mock&api=mock">voltar ao modo demonstração</a>';
+    } else {
+        aviso.innerHTML = '<strong>Modo demonstração:</strong> login e cadastro são simulados e nada é salvo no Firebase. '
+            + '<a href="?auth=firebase&api=http">Usar o login real</a> (precisa da API ligada).';
+    }
+    document.body.prepend(aviso);
+}
+if (document.body) mostrarAvisoDoModo(); else document.addEventListener("DOMContentLoaded", mostrarAvisoDoModo);
+
 const AuthService = {
     modo, HOME, LOGIN, CADASTRO_CONCLUIR,
     obterToken, usuarioFirebase, meuPerfil, entrar, entrarComGoogle, cadastrar, concluirCadastro, nomeSugerido,
-    sair, recuperarSenha, protegerPagina, traduzirErro
+    enviarConfirmacaoDeEmail, conferirConfirmacaoDeEmail, sair, recuperarSenha, protegerPagina, traduzirErro
 };
 window.AuthService = AuthService;
 if (window.__resolverAuth) window.__resolverAuth(AuthService);       // avisa as páginas que o authService carregou

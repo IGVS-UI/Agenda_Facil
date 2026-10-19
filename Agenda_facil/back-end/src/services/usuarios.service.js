@@ -8,7 +8,8 @@
  * O e-mail vem SEMPRE do token (conferido pelo Firebase), nunca do corpo da requisição.
  */
 const modelo = require("../models");
-const { requisicaoInvalida, conflito } = require("../middlewares/erros");
+const geocodificacao = require("./geocodificacao.service");
+const { requisicaoInvalida, conflito, emailJaCadastrado } = require("../middlewares/erros");
 
 const UFS = ["AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO"];
 
@@ -36,15 +37,16 @@ function validarProfissional(dados, telefone) {
         bairro: texto(dados, "bairro", { max: 80, rotulo: "o bairro" }),
         cidade: texto(dados, "cidade", { max: 80, rotulo: "a cidade" }),
         uf,
-        // latitude/longitude: preenchidas depois, a partir do endereço (geocodificação). Sem elas, o local
-        // aparece na lista, mas sem distância.
+        // latitude/longitude: preenchidas pela geocodificação (logo abaixo, em "criar")
         latitude: null,
         longitude: null
     };
 }
 
 // POST /api/usuarios   { perfil, nome, telefone, profissional?: { ... } }
-async function criar(tokenInfo, corpo) {
+// "jaCadastrado": a conta que a autenticação já encontrou para este token (se houver)
+async function criar(tokenInfo, corpo, jaCadastrado) {
+    if (jaCadastrado) throw conflito("Esta conta já está cadastrada. Entre para continuar.");
     if (!tokenInfo.email) throw requisicaoInvalida("A conta do Firebase precisa ter um e-mail.");
     if (corpo.perfil !== "cliente" && corpo.perfil !== "profissional") throw requisicaoInvalida('Escolha o perfil: "cliente" ou "profissional".');
 
@@ -53,7 +55,15 @@ async function criar(tokenInfo, corpo) {
     const profissional = corpo.perfil === "profissional" ? validarProfissional(corpo.profissional, telefone) : null;
 
     if (await modelo.usuarioPorFirebaseUid(tokenInfo.uid)) throw conflito("Esta conta já está cadastrada. Entre para continuar.");
-    if (await modelo.usuarioPorEmail(tokenInfo.email)) throw conflito("Já existe um cadastro com este e-mail.");
+    // (a autenticação já religa a conta quando o e-mail está confirmado; aqui sobra o caso sem confirmação)
+    if (await modelo.usuarioPorEmail(tokenInfo.email)) throw emailJaCadastrado();
+
+    // Endereço -> coordenadas, para o local aparecer na busca por proximidade. Se não achar, o cadastro
+    // continua (o local fica sem coordenadas e pode ser corrigido depois com "npm run geocodificar").
+    if (profissional) {
+        const ponto = await geocodificacao.coordenadasDoEndereco(profissional);
+        if (ponto) Object.assign(profissional, { latitude: ponto.latitude, longitude: ponto.longitude });
+    }
 
     try {
         const { usuario, profissional: local } = await modelo.criarConta({
@@ -63,7 +73,7 @@ async function criar(tokenInfo, corpo) {
         return { id: usuario.id, nome: usuario.nome, perfil: usuario.tipo, ...(local ? { profissionalId: local.id } : {}) };
     } catch (erro) {
         // dois cadastros iguais ao mesmo tempo: o UNIQUE do banco recusa o segundo
-        if (erro.code === "ER_DUP_ENTRY") throw conflito("Esta conta já está cadastrada. Entre para continuar.");
+        if (erro.code === "ER_DUP_ENTRY") throw /email/i.test(erro.sqlMessage || "") ? emailJaCadastrado() : conflito("Esta conta já está cadastrada. Entre para continuar.");
         throw erro;
     }
 }

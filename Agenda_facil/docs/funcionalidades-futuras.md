@@ -24,6 +24,7 @@ Decisão do projeto: entregar primeiro **o essencial para o aplicativo funcionar
 
 | Funcionalidade | Perfil | Observação para a evolução |
 |---|---|---|
+| Confirmação de e-mail no cadastro (e-mail/senha) | Ambos | Hoje alguém pode criar conta com o e-mail de outra pessoa sem provar que é dono dele e, com isso, bloquear o cadastro do verdadeiro dono. Plano: enviar o link de verificação do Firebase, a API exigir `email_verified` antes de criar a conta e o front guardar o formulário para concluir o cadastro sozinho depois do clique. Contas Google já chegam verificadas. **Já existe em parte:** quando o e-mail já tem cadastro ligado a outro login (conta apagada e recriada no Firebase), o site envia o link e a API só religa o cadastro depois da confirmação |
 | Reagendar um agendamento | Cliente | O botão já existe desabilitado ("em breve"); reaproveita o seletor de dia e horário |
 | Minha conta (editar dados, senha, localização padrão) | Ambos | Depende de Firebase Auth e da tabela de usuários |
 | Perfil público do local (fotos, descrição) | Cliente / Profissional | Exige armazenamento de imagens |

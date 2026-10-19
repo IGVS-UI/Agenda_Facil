@@ -24,6 +24,27 @@ function conexoes() {
     }
     return pool;
 }
+const filas = new Map();   // filas de reserva por profissional (comTravaDoProfissional)
+
+// Conexão avulsa, fora do pool: o que for ajustado nela (travas, FOREIGN_KEY_CHECKS) nunca vaza para outras consultas
+const conexaoAvulsa = () => mysql.createConnection({ host: bd.host, port: bd.port, user: bd.user, password: bd.password, database: bd.database, charset: "utf8mb4" });
+
+async function travaNoBanco(profissionalId, tarefa) {
+    const nome = `${bd.database}:agenda:${profissionalId}`;
+    const conexao = await conexaoAvulsa();
+    try {
+        const [[{ ok }]] = await conexao.query("SELECT GET_LOCK(?, 10) AS ok", [nome]);
+        if (ok !== 1) throw Object.assign(new Error("A agenda deste profissional está ocupada por outra reserva."), { code: "TRAVA_TEMPO_ESGOTADO" });
+        try {
+            return await tarefa();
+        } finally {
+            await conexao.query("SELECT RELEASE_LOCK(?)", [nome]);
+        }
+    } finally {
+        await conexao.end();
+    }
+}
+
 const consultar = async (sql, parametros = []) => (await conexoes().execute(sql, parametros))[0];
 const primeira = async (sql, parametros) => (await consultar(sql, parametros))[0];
 
@@ -32,9 +53,10 @@ const hora = (coluna) => `TIME_FORMAT(${coluna}, '%H:%i')`;               // col
 const horaSql = (texto) => `${texto}:00`;                               // "09:00" -> "09:00:00"
 const maisUmaHora = (texto) => `${String(Number(texto.slice(0, 2)) + 1).padStart(2, "0")}:${texto.slice(3, 5)}:00`;
 
-const comoUsuario = (l) => l && { id: l.id_usuario, firebaseUid: l.firebase_uid, nome: l.nome, email: l.email, telefone: l.telefone, tipo: l.tipo };
+const comoUsuario = (l) => l && { id: l.id_usuario, firebaseUid: l.firebase_uid, nome: l.nome, email: l.email, telefone: l.telefone, tipo: l.tipo, ativo: Boolean(l.ativo) };
 const comoProfissional = (l) => l && {
-    id: l.id_profissional, usuarioId: l.usuario_id, nomeLocal: l.nome_local, logradouro: l.logradouro, numero: l.numero,
+    id: l.id_profissional, usuarioId: l.usuario_id, nomeLocal: l.nome_local, especialidade: l.especialidade, celular: l.celular,
+    cep: l.cep, logradouro: l.logradouro, numero: l.numero, complemento: l.complemento,
     bairro: l.bairro, cidade: l.cidade, uf: l.uf, latitude: l.latitude, longitude: l.longitude,
     avaliacao: null,        // ainda não existe no banco (funcionalidade futura)
     ativo: Boolean(l.ativo)
@@ -56,6 +78,11 @@ module.exports = {
     usuarioPorId: async (id) => comoUsuario(await primeira("SELECT * FROM usuario WHERE id_usuario = ? AND ativo = 1", [Number(id)])),
     usuarioPorFirebaseUid: async (uid) => comoUsuario(await primeira("SELECT * FROM usuario WHERE firebase_uid = ? AND ativo = 1", [uid])),
     usuarioPorEmail: async (email) => comoUsuario(await primeira("SELECT * FROM usuario WHERE email = ?", [String(email)])),
+    // Liga a conta a um novo login do Firebase (o antigo foi apagado/recriado). Devolve a conta, ou null se não religou.
+    religarFirebaseUid: async (id, uid) => {
+        const [r] = await conexoes().execute("UPDATE usuario SET firebase_uid = ? WHERE id_usuario = ? AND ativo = 1", [uid, Number(id)]);
+        return r.affectedRows ? comoUsuario(await primeira("SELECT * FROM usuario WHERE id_usuario = ?", [Number(id)])) : null;
+    },
     // Cria a conta (e o local, se for profissional) numa transação: ou grava os dois, ou nenhum
     criarConta: async ({ usuario, profissional }) => {
         const conexao = await conexoes().getConnection();
@@ -90,6 +117,11 @@ module.exports = {
     profissionalPorId: async (id) => comoProfissional(await primeira("SELECT * FROM profissional WHERE id_profissional = ?", [Number(id)])),
     profissionalPorUsuarioId: async (usuarioId) => comoProfissional(await primeira("SELECT * FROM profissional WHERE usuario_id = ?", [Number(usuarioId)])),
 
+    atualizarLocalizacaoDoProfissional: async (id, latitude, longitude) => {
+        await consultar("UPDATE profissional SET latitude = ?, longitude = ? WHERE id_profissional = ?", [latitude, longitude, Number(id)]);
+        return comoProfissional(await primeira("SELECT * FROM profissional WHERE id_profissional = ?", [Number(id)]));
+    },
+
     /* ---------- serviços ---------- */
     listarServicos: async ({ profissionalId } = {}) => (await (profissionalId
         ? consultar("SELECT * FROM servico WHERE profissional_id = ? ORDER BY id_servico", [Number(profissionalId)])
@@ -110,6 +142,10 @@ module.exports = {
         }
         return comoServico(await primeira("SELECT * FROM servico WHERE id_servico = ?", [Number(id)]));
     },
+
+    servicoTemAgendamentos: async (id) =>
+        Boolean(await primeira("SELECT 1 AS existe FROM agendamento WHERE servico_id = ? LIMIT 1", [Number(id)])),
+    excluirServico: async (id) => { await consultar("DELETE FROM servico WHERE id_servico = ?", [Number(id)]); },
 
     /* ---------- agenda semanal e bloqueios ---------- */
     horasDoDia: async (profissionalId, diaSemana) =>
@@ -154,22 +190,31 @@ module.exports = {
     },
 
     /* ---------- agendamentos ---------- */
-    listarAgendamentos: async ({ usuarioId, profissionalId, status, data } = {}) => {
+    listarAgendamentos: async ({ usuarioId, profissionalId, status, data, de, ate } = {}) => {
         const condicoes = [], parametros = [];
         if (usuarioId) { condicoes.push("usuario_id = ?"); parametros.push(Number(usuarioId)); }
         if (profissionalId) { condicoes.push("profissional_id = ?"); parametros.push(Number(profissionalId)); }
         if (status) { condicoes.push("status = ?"); parametros.push(status.toLowerCase()); }
         if (data) { condicoes.push("data_agendamento = ?"); parametros.push(data); }
+        if (de) { condicoes.push("data_agendamento >= ?"); parametros.push(de); }
+        if (ate) { condicoes.push("data_agendamento <= ?"); parametros.push(ate); }
         const onde = condicoes.length ? `WHERE ${condicoes.join(" AND ")}` : "";
         return (await consultar(`SELECT ${COLUNAS_AGENDAMENTO} FROM agendamento ${onde} ORDER BY data_agendamento, hora_inicio`, parametros)).map(comoAgendamento);
     },
     agendamentoPorId: async (id) => comoAgendamento(await primeira(`SELECT ${COLUNAS_AGENDAMENTO} FROM agendamento WHERE id_agendamento = ?`, [Number(id)])),
-    // Há agendamento ATIVO (pendente/confirmado) neste horário?
-    horarioOcupado: async (profissionalId, data, h, ignorarId) =>
-        Boolean(await primeira(
-            `SELECT 1 AS x FROM agendamento WHERE profissional_id = ? AND data_agendamento = ? AND hora_inicio = ?
-             AND status IN ('pendente', 'confirmado') AND id_agendamento <> ? LIMIT 1`,
-            [Number(profissionalId), data, horaSql(h), ignorarId ? Number(ignorarId) : 0])),
+    /*
+     * Executa "tarefa" sem que outra reserva do MESMO profissional rode ao mesmo tempo.
+     * 1) Fila dentro da própria API: pedidos do mesmo profissional esperam a vez sem ocupar conexões.
+     * 2) Trava do MySQL (GET_LOCK) numa conexão SÓ PARA ELA (fora do pool): vale mesmo se houver
+     *    mais de uma API rodando, e nunca tira do pool a conexão de quem está gravando.
+     * Reservas de profissionais diferentes seguem em paralelo.
+     */
+    comTravaDoProfissional: (profissionalId, tarefa) => {
+        const chave = Number(profissionalId);
+        const resultado = (filas.get(chave) || Promise.resolve()).then(() => travaNoBanco(chave, tarefa));
+        filas.set(chave, resultado.catch(() => {}));
+        return resultado;
+    },
     // Se dois clientes tentarem o mesmo horário ao mesmo tempo, o UNIQUE do banco recusa o segundo (ER_DUP_ENTRY)
     criarAgendamento: async (d) => {
         const r = await consultar(
@@ -204,7 +249,8 @@ module.exports = {
         }
         const { gerar } = require("./dadosExemplo");
         const dados = gerar();
-        const conexao = await conexoes().getConnection();
+        // Conexão avulsa: o FOREIGN_KEY_CHECKS = 0 abaixo some junto com ela e nunca volta ao pool
+        const conexao = await conexaoAvulsa();
         try {
             await conexao.query("SET FOREIGN_KEY_CHECKS = 0");
             for (const tabela of ["agendamento", "bloqueio", "disponibilidade_semanal", "servico", "profissional", "usuario"]) {
@@ -215,12 +261,10 @@ module.exports = {
                 await conexao.execute("INSERT INTO usuario (id_usuario, nome, email, telefone, tipo) VALUES (?, ?, ?, ?, ?)", [u.id, u.nome, u.email, u.telefone, u.tipo]);
             }
             for (const p of dados.profissionais) {
-                const especialidade = (dados.servicos.find((s) => s.profissionalId === p.id) || {}).categoria || "Geral";
-                const celular = dados.usuarios.find((u) => u.id === p.usuarioId).telefone;
                 await conexao.execute(
-                    `INSERT INTO profissional (id_profissional, usuario_id, nome_local, especialidade, celular, logradouro, numero, bairro, cidade, uf, latitude, longitude)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                    [p.id, p.usuarioId, p.nomeLocal, especialidade, celular, p.logradouro, p.numero, p.bairro, p.cidade, p.uf, p.latitude, p.longitude]);
+                    `INSERT INTO profissional (id_profissional, usuario_id, nome_local, especialidade, celular, cep, logradouro, numero, complemento, bairro, cidade, uf, latitude, longitude)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                    [p.id, p.usuarioId, p.nomeLocal, p.especialidade, p.celular, p.cep, p.logradouro, p.numero, p.complemento, p.bairro, p.cidade, p.uf, p.latitude, p.longitude]);
             }
             for (const s of dados.servicos) {
                 await conexao.execute(
@@ -240,7 +284,7 @@ module.exports = {
                     [a.id, a.usuarioId, a.servicoId, a.profissionalId, a.data, horaSql(a.hora), a.status.toLowerCase()]);
             }
         } finally {
-            conexao.release();
+            await conexao.end();
         }
     }
 };

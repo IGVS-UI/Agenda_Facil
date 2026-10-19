@@ -32,6 +32,7 @@
                 <button type="button" class="btn btn-sm btn-outline-primary" data-editar="${s.id}" aria-label="Editar ${esc(s.nome)}">Editar</button>
                 <button type="button" class="btn btn-sm ${s.ativo ? "btn-outline-danger" : "btn-outline-success"}" data-alternar="${s.id}"
                     aria-label="${s.ativo ? "Desativar" : "Ativar"} ${esc(s.nome)}">${s.ativo ? "Desativar" : "Ativar"}</button>
+                <button type="button" class="btn btn-sm btn-link text-danger" data-excluir="${s.id}" aria-label="Excluir ${esc(s.nome)}">Excluir</button>
             </td></tr>`).join("")
             || '<tr><td colspan="5" class="pp-vazio">Você ainda não cadastrou serviços. Use "Novo serviço".</td></tr>';
     }
@@ -113,6 +114,19 @@
     elLista.addEventListener("click", async (e) => {
         const editar = e.target.closest("[data-editar]");
         if (editar) { abrirFormulario(servicos.find((s) => s.id === Number(editar.dataset.editar))); return; }
+        const excluir = e.target.closest("[data-excluir]");
+        if (excluir) {
+            const servico = servicos.find((s) => s.id === Number(excluir.dataset.excluir));
+            if (!confirm(`Excluir o serviço "${servico.nome}"? Esta ação não pode ser desfeita.`)) return;
+            try {
+                await apiService.excluirServico(servico.id);
+                mensagem(`"${servico.nome}" foi excluído.`);
+            } catch (erro) {
+                mensagem(erro.message, "aviso");      // ex.: já tem agendamentos -> use "Desativar"
+            }
+            await carregar();
+            return;
+        }
         const alternar = e.target.closest("[data-alternar]");
         if (alternar) {
             const servico = servicos.find((s) => s.id === Number(alternar.dataset.alternar));

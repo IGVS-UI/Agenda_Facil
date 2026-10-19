@@ -3,6 +3,7 @@ const horarios = require("../services/horarios.service");
 const disponibilidade = require("../services/disponibilidade.service");
 
 exports.listar = async (req, res) => res.json(await profissionais.listar(req.query));
+exports.localizacaoDoCep = async (req, res) => res.json(await profissionais.localizacaoDoCep(req.query));
 exports.listarOrigens = (req, res) => res.json(profissionais.listarOrigens());
 exports.horariosDisponiveis = async (req, res) => res.json(await horarios.listar(req.query));
 exports.obterDisponibilidade = async (req, res) => res.json(await disponibilidade.obter(req.usuario, req.params.id));

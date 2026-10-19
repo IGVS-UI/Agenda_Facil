@@ -54,7 +54,7 @@ const MockData = {
      */
     profissionais: [
         {
-            id: 1, nome: "João Barbosa", local: "Barbearia do João", endereco: "Rua das Flores, 120 - Centro",
+            id: 1, nome: "João Barbosa", latitude: -23.5617, longitude: -46.6559, local: "Barbearia do João", endereco: "Rua das Flores, 120 - Centro",
             distanciaKm: 0.8, avaliacao: 4.8, servicosIds: [1, 2],
             disponibilidade: {
                 1: ["09:00", "10:00", "11:00", "13:00", "14:00", "15:00", "16:00"],
@@ -67,7 +67,7 @@ const MockData = {
             bloqueios: [{ data: dataRelativa(2), hora: "14:00" }]
         },
         {
-            id: 2, nome: "Marina Alves", local: "Studio Marina Alves", endereco: "Av. Brasil, 850 - Jardim América",
+            id: 2, nome: "Marina Alves", latitude: -23.567, longitude: -46.662, local: "Studio Marina Alves", endereco: "Av. Brasil, 850 - Jardim América",
             distanciaKm: 1.4, avaliacao: 4.9, servicosIds: [3, 5],
             disponibilidade: {
                 2: ["09:00", "11:00", "14:00", "16:00"],
@@ -79,7 +79,7 @@ const MockData = {
             bloqueios: []
         },
         {
-            id: 3, nome: "Carla Mendes", local: "Espaço Equilíbrio", endereco: "Rua das Palmeiras, 45 - Vila Nova",
+            id: 3, nome: "Carla Mendes", latitude: -23.575, longitude: -46.64, local: "Espaço Equilíbrio", endereco: "Rua das Palmeiras, 45 - Vila Nova",
             distanciaKm: 2.1, avaliacao: 4.7, servicosIds: [4, 5],
             disponibilidade: {
                 1: ["10:00", "11:00", "15:00", "16:00", "17:00"],
@@ -89,7 +89,7 @@ const MockData = {
             bloqueios: []
         },
         {
-            id: 4, nome: "Dr. Rafael Costa", local: "Clínica Viva Bem", endereco: "Rua XV de Novembro, 300 - Centro",
+            id: 4, nome: "Dr. Rafael Costa", latitude: -23.55, longitude: -46.633, local: "Clínica Viva Bem", endereco: "Rua XV de Novembro, 300 - Centro",
             distanciaKm: 3.5, avaliacao: 5.0, servicosIds: [6],
             disponibilidade: {
                 2: ["08:00", "09:00", "10:00", "14:00", "15:00"],

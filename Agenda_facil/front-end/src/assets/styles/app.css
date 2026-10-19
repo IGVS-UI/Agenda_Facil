@@ -235,3 +235,12 @@
 .texto-legal { max-width: 46rem; }
 .texto-legal h2 { margin-top: 1.75rem; font-size: 1.2rem; font-weight: 700; }
 .texto-legal li { margin-bottom: .35rem; }
+
+/* "Onde você está?" (serviços do cliente) */
+.ps-localizacao { margin-bottom: 1.25rem; }
+.ps-loc-cartao { padding: 1.25rem; background: var(--azul-claro); border-radius: 8px; }
+.ps-loc-cartao h2 { margin-bottom: 0.25rem; font-size: 1.25rem; font-weight: 700; }
+.ps-loc-opcoes { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; margin: 0.75rem 0 0.25rem; }
+.ps-loc-cep { display: flex; gap: 0.5rem; }
+.ps-loc-cep .form-control { width: 10rem; }
+.ps-loc-atual { margin: 0; padding: 0.6rem 1rem; background: var(--azul-claro); border-radius: 8px; }
